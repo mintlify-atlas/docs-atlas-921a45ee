@@ -1,0 +1,119 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Discord Interactions",
+  "projectDescription": "TypeScript/JavaScript SDK for handling Discord Interactions and Webhook Events with signature verification",
+  "theme": "aspen",
+  "primaryColor": "#5865F2",
+  "lightColor": "#5865F2",
+  "darkColor": "#5865F2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/interactions",
+              "guides/webhook-events",
+              "guides/signature-verification",
+              "guides/message-components",
+              "guides/express-integration"
+            ]
+          },
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/express-app",
+              "examples/nextjs",
+              "examples/cloud-functions",
+              "examples/modals"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core Functions",
+            "pages": [
+              "api/verify-key",
+              "api/verify-key-middleware",
+              "api/verify-webhook-event-middleware"
+            ]
+          },
+          {
+            "group": "Interactions",
+            "pages": [
+              "api/interaction-type",
+              "api/interaction-response-type",
+              "api/interaction-response-flags"
+            ]
+          },
+          {
+            "group": "Message Components",
+            "pages": [
+              "api/message-component-types",
+              "api/button-style-types",
+              "api/text-style-types",
+              "api/components"
+            ]
+          },
+          {
+            "group": "Webhook Events",
+            "pages": [
+              "api/webhook-type",
+              "api/webhook-event-type"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Ed25519 signature verification for Discord webhooks",
+    "TypeScript types for interactions and webhook events",
+    "Express middleware for handling Discord requests",
+    "Message components types (buttons, selects, modals)",
+    "Webhook event types for real-time notifications",
+    "Support for Node.js, browser, and edge runtimes"
+  ],
+  "publicApiSurface": [
+    "verifyKey",
+    "verifyKeyMiddleware",
+    "verifyWebhookEventMiddleware",
+    "InteractionType",
+    "InteractionResponseType",
+    "InteractionResponseFlags",
+    "MessageComponentTypes",
+    "ButtonStyleTypes",
+    "TextStyleTypes",
+    "WebhookType",
+    "WebhookEventType",
+    "ActionRow",
+    "Button",
+    "StringSelect",
+    "UserSelect",
+    "RoleSelect",
+    "MentionableSelect",
+    "ChannelSelect",
+    "TextInput",
+    "Section",
+    "TextDisplay",
+    "Thumbnail",
+    "MediaGallery",
+    "FileComponent",
+    "Separator",
+    "Container",
+    "Label"
+  ]
+}
