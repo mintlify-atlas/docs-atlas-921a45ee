@@ -1,0 +1,686 @@
+---
+title: 'Express Integration'
+description: 'Build a complete Discord webhook server with Express.js'
+---
+
+## Overview
+
+This guide walks you through building a complete Discord webhook server using Express.js and the discord-interactions library. You'll learn how to handle both interactions and webhook events with proper signature verification.
+
+## Quick Start
+
+<Steps>
+  <Step title="Install dependencies">
+    ```bash
+    npm install express discord-interactions
+    ```
+  </Step>
+
+  <Step title="Set up environment variables">
+    Create a `.env` file with your Discord application credentials:
+    ```bash
+    CLIENT_PUBLIC_KEY=your_public_key_here
+    PORT=8999
+    ```
+  </Step>
+
+  <Step title="Create your server">
+    Create `server.js` and add the basic setup
+  </Step>
+
+  <Step title="Run your server">
+    ```bash
+    node server.js
+    ```
+  </Step>
+</Steps>
+
+## Basic Server Setup
+
+Here's a minimal Express server with Discord interactions:
+
+```javascript
+const express = require('express');
+const {
+  InteractionType,
+  InteractionResponseType,
+  verifyKeyMiddleware,
+} = require('discord-interactions');
+
+const app = express();
+
+app.post(
+  '/interactions',
+  verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+  (req, res) => {
+    const interaction = req.body;
+    
+    if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+      res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: 'Hello world',
+        },
+      });
+    }
+  }
+);
+
+app.listen(8999, () => {
+  console.log('Server listening at http://localhost:8999');
+});
+```
+
+## Complete Server Example
+
+Here's a full-featured server handling both interactions and webhook events:
+
+```javascript
+const express = require('express');
+const {
+  InteractionType,
+  InteractionResponseType,
+  InteractionResponseFlags,
+  MessageComponentTypes,
+  ButtonStyleTypes,
+  verifyKeyMiddleware,
+  verifyWebhookEventMiddleware,
+  WebhookType,
+} = require('discord-interactions');
+
+const app = express();
+
+// Health check endpoint (useful for monitoring)
+app.get('/health', (req, res) => {
+  res.send('ok');
+});
+
+// Interactions endpoint
+app.post(
+  '/interactions',
+  verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+  (req, res) => {
+    const interaction = req.body;
+    
+    // Handle different interaction types
+    if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+      const commandName = interaction.data.name;
+      
+      // Route to command handlers
+      const response = handleCommand(commandName, interaction);
+      res.send(response);
+    } 
+    else if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
+      const customId = interaction.data.custom_id;
+      
+      // Handle component interactions
+      const response = handleComponent(customId, interaction);
+      res.send(response);
+    }
+    else if (interaction.type === InteractionType.MODAL_SUBMIT) {
+      const customId = interaction.data.custom_id;
+      
+      // Handle modal submissions
+      const response = handleModal(customId, interaction);
+      res.send(response);
+    }
+  }
+);
+
+// Webhook events endpoint
+app.post(
+  '/events',
+  verifyWebhookEventMiddleware(process.env.CLIENT_PUBLIC_KEY),
+  (req, res) => {
+    const event = req.body;
+    
+    if (event.type === WebhookType.EVENT) {
+      // Process event asynchronously
+      processEvent(event.data.event).catch(console.error);
+    }
+  }
+);
+
+// Command handlers
+function handleCommand(commandName, interaction) {
+  switch (commandName) {
+    case 'hello':
+      return {
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `Hello, ${interaction.member?.user?.username || 'friend'}!`,
+        },
+      };
+      
+    case 'buttons':
+      return {
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: 'Click a button!',
+          components: [
+            {
+              type: MessageComponentTypes.ACTION_ROW,
+              components: [
+                {
+                  type: MessageComponentTypes.BUTTON,
+                  style: ButtonStyleTypes.PRIMARY,
+                  label: 'Primary',
+                  custom_id: 'button_primary',
+                },
+                {
+                  type: MessageComponentTypes.BUTTON,
+                  style: ButtonStyleTypes.SUCCESS,
+                  label: 'Success',
+                  custom_id: 'button_success',
+                },
+              ],
+            },
+          ],
+        },
+      };
+      
+    default:
+      return {
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: 'Unknown command',
+          flags: InteractionResponseFlags.EPHEMERAL,
+        },
+      };
+  }
+}
+
+// Component handlers
+function handleComponent(customId, interaction) {
+  if (customId.startsWith('button_')) {
+    return {
+      type: InteractionResponseType.UPDATE_MESSAGE,
+      data: {
+        content: `You clicked the ${customId.replace('button_', '')} button!`,
+        components: [], // Remove buttons
+      },
+    };
+  }
+  
+  return {
+    type: InteractionResponseType.UPDATE_MESSAGE,
+    data: {
+      content: 'Component interaction received',
+    },
+  };
+}
+
+// Modal handlers
+function handleModal(customId, interaction) {
+  return {
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: {
+      content: 'Modal submitted successfully!',
+      flags: InteractionResponseFlags.EPHEMERAL,
+    },
+  };
+}
+
+// Event processor
+async function processEvent(event) {
+  console.log('📨 Event received:', event.type);
+  
+  // Add your event processing logic here
+  switch (event.type) {
+    case 'APPLICATION_AUTHORIZED':
+      console.log('App authorized by user:', event.user?.username);
+      break;
+      
+    case 'ENTITLEMENT_CREATE':
+      console.log('New entitlement created');
+      break;
+      
+    default:
+      console.log('Unhandled event type:', event.type);
+  }
+}
+
+const PORT = process.env.PORT || 8999;
+app.listen(PORT, () => {
+  console.log(`Discord webhook server listening at http://localhost:${PORT}`);
+  console.log(`Interactions endpoint: http://localhost:${PORT}/interactions`);
+  console.log(`Events endpoint: http://localhost:${PORT}/events`);
+});
+```
+
+## Middleware Configuration
+
+<Warning>
+  Do not use body-parsing middleware on interaction and event routes. The verification middleware needs access to the raw request body.
+</Warning>
+
+### ❌ Wrong Approach
+
+```javascript
+// DON'T DO THIS
+const express = require('express');
+const app = express();
+
+// This will break signature verification!
+app.use(express.json());
+
+app.post('/interactions', 
+  verifyKeyMiddleware(PUBLIC_KEY),
+  (req, res) => { /* ... */ }
+);
+```
+
+### ✅ Correct Approach
+
+```javascript
+// Option 1: Skip body parsing for webhook routes
+app.use((req, res, next) => {
+  if (req.path === '/interactions' || req.path === '/events') {
+    return next(); // Skip body parsing
+  }
+  express.json()(req, res, next);
+});
+
+// Option 2: Only parse specific routes
+app.post('/api/some-route', express.json(), (req, res) => {
+  // Body parsed here
+});
+
+app.post('/interactions', 
+  verifyKeyMiddleware(PUBLIC_KEY),
+  (req, res) => {
+    // Raw body handled by middleware
+  }
+);
+```
+
+## Environment Variables
+
+Create a `.env` file and load it with a package like `dotenv`:
+
+```bash
+# .env
+CLIENT_PUBLIC_KEY=your_discord_public_key
+PORT=8999
+NODE_ENV=production
+```
+
+```javascript
+// Load environment variables
+require('dotenv').config();
+
+const PUBLIC_KEY = process.env.CLIENT_PUBLIC_KEY;
+
+if (!PUBLIC_KEY) {
+  console.error('CLIENT_PUBLIC_KEY environment variable is required');
+  process.exit(1);
+}
+```
+
+## Error Handling
+
+Add proper error handling to your Express server:
+
+```javascript
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  
+  res.status(500).json({
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined,
+  });
+});
+
+// Handle 404
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not found',
+    path: req.path,
+  });
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+```
+
+## Logging
+
+Add request logging for debugging:
+
+```javascript
+// Simple request logger
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
+  next();
+});
+
+// Detailed interaction logging
+app.post('/interactions', 
+  verifyKeyMiddleware(PUBLIC_KEY),
+  (req, res) => {
+    const interaction = req.body;
+    
+    console.log('Interaction received:', {
+      type: interaction.type,
+      id: interaction.id,
+      user: interaction.member?.user?.username || interaction.user?.username,
+      command: interaction.data?.name,
+      component: interaction.data?.custom_id,
+    });
+    
+    // Handle interaction...
+  }
+);
+```
+
+## Testing Locally
+
+### Using ngrok
+
+Expose your local server to Discord:
+
+<Steps>
+  <Step title="Install ngrok">
+    ```bash
+    npm install -g ngrok
+    ```
+  </Step>
+
+  <Step title="Start your Express server">
+    ```bash
+    node server.js
+    ```
+  </Step>
+
+  <Step title="Start ngrok">
+    ```bash
+    ngrok http 8999
+    ```
+  </Step>
+
+  <Step title="Update Discord Developer Portal">
+    Copy the ngrok URL (e.g., `https://abc123.ngrok.io`) and set it as your Interactions Endpoint URL in the Discord Developer Portal: `https://abc123.ngrok.io/interactions`
+  </Step>
+</Steps>
+
+### Health Check Endpoint
+
+Use a health check for monitoring:
+
+```javascript
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+```
+
+## Production Deployment
+
+### Using PM2
+
+Keep your server running with PM2:
+
+```bash
+npm install -g pm2
+
+# Start server
+pm2 start server.js --name discord-bot
+
+# View logs
+pm2 logs discord-bot
+
+# Restart on code changes
+pm2 restart discord-bot
+
+# Auto-restart on system reboot
+pm2 startup
+pm2 save
+```
+
+### Environment-Specific Configuration
+
+```javascript
+const config = {
+  development: {
+    port: 8999,
+    logLevel: 'debug',
+  },
+  production: {
+    port: process.env.PORT || 80,
+    logLevel: 'info',
+  },
+};
+
+const env = process.env.NODE_ENV || 'development';
+const currentConfig = config[env];
+
+app.listen(currentConfig.port, () => {
+  console.log(`Server running in ${env} mode on port ${currentConfig.port}`);
+});
+```
+
+## TypeScript Setup
+
+For TypeScript projects, add proper typing:
+
+```typescript
+import express, { Request, Response, NextFunction } from 'express';
+import {
+  InteractionType,
+  InteractionResponseType,
+  verifyKeyMiddleware,
+} from 'discord-interactions';
+
+const app = express();
+
+interface DiscordInteraction {
+  type: InteractionType;
+  id: string;
+  data?: {
+    name?: string;
+    custom_id?: string;
+    [key: string]: any;
+  };
+  member?: {
+    user?: {
+      username: string;
+      id: string;
+    };
+  };
+  [key: string]: any;
+}
+
+app.post(
+  '/interactions',
+  verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY!),
+  (req: Request, res: Response) => {
+    const interaction = req.body as DiscordInteraction;
+    
+    if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+      res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: 'Hello from TypeScript!',
+        },
+      });
+    }
+  }
+);
+
+const PORT = parseInt(process.env.PORT || '8999', 10);
+app.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
+});
+```
+
+## Advanced Patterns
+
+### Command Registry
+
+Organize commands using a registry pattern:
+
+```javascript
+class CommandRegistry {
+  constructor() {
+    this.commands = new Map();
+  }
+  
+  register(name, handler) {
+    this.commands.set(name, handler);
+  }
+  
+  handle(interaction) {
+    const commandName = interaction.data.name;
+    const handler = this.commands.get(commandName);
+    
+    if (!handler) {
+      return {
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: 'Unknown command',
+          flags: InteractionResponseFlags.EPHEMERAL,
+        },
+      };
+    }
+    
+    return handler(interaction);
+  }
+}
+
+const registry = new CommandRegistry();
+
+// Register commands
+registry.register('hello', (interaction) => ({
+  type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+  data: { content: 'Hello!' },
+}));
+
+registry.register('ping', (interaction) => ({
+  type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+  data: { content: 'Pong!' },
+}));
+
+// Use in route
+app.post('/interactions', 
+  verifyKeyMiddleware(PUBLIC_KEY),
+  (req, res) => {
+    const interaction = req.body;
+    
+    if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+      res.send(registry.handle(interaction));
+    }
+  }
+);
+```
+
+### Rate Limiting
+
+Protect your endpoint with rate limiting:
+
+```javascript
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  message: 'Too many requests from this IP',
+});
+
+// Apply to all routes
+app.use(limiter);
+
+// Or specific routes
+app.post('/interactions', limiter, verifyKeyMiddleware(PUBLIC_KEY), ...);
+```
+
+## Best Practices
+
+<Note>
+  - Keep your public key in environment variables, never in source code
+  - Use the verification middleware on all Discord webhook routes
+  - Implement proper error handling and logging
+  - Add health check endpoints for monitoring
+  - Use environment-specific configurations
+</Note>
+
+<Warning>
+  Always validate and sanitize user input from interactions before using it in your application logic.
+</Warning>
+
+<Info>
+  For production deployments, consider using a process manager like PM2 or containerizing with Docker.
+</Info>
+
+## Complete Working Example
+
+Here's the exact example from the repository:
+
+```javascript
+const express = require('express');
+const util = require('node:util');
+const {
+  InteractionType,
+  InteractionResponseType,
+  verifyKeyMiddleware,
+  verifyWebhookEventMiddleware,
+} = require('discord-interactions');
+
+const app = express();
+
+app.post(
+  '/interactions',
+  verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+  (req, res) => {
+    const interaction = req.body;
+    if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+      res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: 'Hello world',
+        },
+      });
+    }
+  },
+);
+
+app.post(
+  '/events',
+  verifyWebhookEventMiddleware(process.env.CLIENT_PUBLIC_KEY),
+  (req, _res) => {
+    console.log('📨 Event Received!');
+    console.log(
+      util.inspect(req.body, { showHidden: false, colors: true, depth: null }),
+    );
+  },
+);
+
+app.get('/health', (_req, res) => {
+  res.send('ok');
+});
+
+app.listen(8999, () => {
+  console.log('Example app listening at http://localhost:8999');
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Message Components" icon="grid" href="/guides/message-components">
+    Add interactive buttons and menus to your messages
+  </Card>
+  
+  <Card title="Signature Verification" icon="shield-check" href="/guides/signature-verification">
+    Deep dive into signature verification
+  </Card>
+</CardGroup>

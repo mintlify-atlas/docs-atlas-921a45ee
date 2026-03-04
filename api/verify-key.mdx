@@ -1,0 +1,84 @@
+---
+title: verifyKey
+description: Validates a payload from Discord against its signature and key
+---
+
+## Function Signature
+
+```typescript
+async function verifyKey(
+  rawBody: Uint8Array | ArrayBuffer | Buffer | string,
+  signature: string,
+  timestamp: string,
+  clientPublicKey: string | CryptoKey,
+): Promise<boolean>
+```
+
+## Description
+
+Validates a payload from Discord against its signature and key using the Ed25519 cryptographic signature algorithm. This function is used internally by the middleware functions but can also be used directly for custom verification implementations.
+
+## Parameters
+
+<ParamField path="rawBody" type="Uint8Array | ArrayBuffer | Buffer | string" required>
+  The raw payload data received from Discord. This should be the unmodified request body.
+</ParamField>
+
+<ParamField path="signature" type="string" required>
+  The signature from the `X-Signature-Ed25519` header sent by Discord.
+</ParamField>
+
+<ParamField path="timestamp" type="string" required>
+  The timestamp from the `X-Signature-Timestamp` header sent by Discord.
+</ParamField>
+
+<ParamField path="clientPublicKey" type="string | CryptoKey" required>
+  The public key from the Discord developer dashboard. Can be provided as a hex-encoded string or as a `CryptoKey` object.
+</ParamField>
+
+## Returns
+
+<ResponseField name="Promise<boolean>" type="boolean">
+  Returns `true` if the signature is valid and the payload is authentic, `false` otherwise. The function will also return `false` if any error occurs during verification.
+</ResponseField>
+
+## Usage Example
+
+```typescript
+import { verifyKey } from 'discord-interactions';
+
+app.post('/interactions', async (req, res) => {
+  const signature = req.headers['x-signature-ed25519'];
+  const timestamp = req.headers['x-signature-timestamp'];
+  const rawBody = req.body; // Should be raw buffer or string
+  
+  const isValid = await verifyKey(
+    rawBody,
+    signature,
+    timestamp,
+    process.env.DISCORD_PUBLIC_KEY
+  );
+  
+  if (!isValid) {
+    return res.status(401).send('Invalid signature');
+  }
+  
+  // Process the interaction
+  const body = JSON.parse(rawBody.toString());
+  // ...
+});
+```
+
+## Implementation Details
+
+The function:
+1. Converts the timestamp and body to `Uint8Array` format
+2. Concatenates the timestamp and body data
+3. Imports the public key if provided as a string (hex-encoded)
+4. Verifies the signature using the Ed25519 algorithm via the Web Crypto API
+5. Returns `true` if verification succeeds, `false` if it fails or any error occurs
+
+## See Also
+
+- [verifyKeyMiddleware](/api/verify-key-middleware) - Express middleware for interaction verification
+- [verifyWebhookEventMiddleware](/api/verify-webhook-event-middleware) - Express middleware for webhook event verification

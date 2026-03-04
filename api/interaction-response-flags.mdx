@@ -1,0 +1,153 @@
+---
+title: InteractionResponseFlags
+description: Enum representing flags that can be included in Discord interaction responses
+---
+
+# InteractionResponseFlags
+
+The `InteractionResponseFlags` enum represents flags that can be included in an Interaction Response to modify its behavior.
+
+## Enum Values
+
+### EPHEMERAL
+
+**Value:** `64` (binary: `1 << 6`)
+
+Show the message only to the user that performed the interaction. The message does not persist between sessions and is only visible to the invoking user.
+
+```typescript
+InteractionResponseFlags.EPHEMERAL // 64
+```
+
+### IS_COMPONENTS_V2
+
+**Value:** `32768` (binary: `1 << 15`)
+
+Allows you to create fully component-driven messages. This enables the use of Components V2 features.
+
+```typescript
+InteractionResponseFlags.IS_COMPONENTS_V2 // 32768
+```
+
+See [Discord Components Reference](https://discord.com/developers/docs/components/reference) for more information.
+
+## Usage Examples
+
+### Sending an Ephemeral Message
+
+Ephemeral messages are only visible to the user who triggered the interaction, making them ideal for error messages, private responses, or commands that don't need to be seen by everyone.
+
+```typescript
+import { InteractionResponseType, InteractionResponseFlags } from 'discord-interactions';
+
+return {
+  type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+  data: {
+    content: 'This message is only visible to you!',
+    flags: InteractionResponseFlags.EPHEMERAL
+  }
+};
+```
+
+### Using Components V2
+
+```typescript
+return {
+  type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+  data: {
+    content: 'Check out these new components!',
+    flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+    components: [
+      // Component V2 structure
+    ]
+  }
+};
+```
+
+### Combining Multiple Flags
+
+Flags can be combined using the bitwise OR operator (`|`):
+
+```typescript
+return {
+  type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+  data: {
+    content: 'Private message with Components V2',
+    flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+    components: [
+      // Component structure
+    ]
+  }
+};
+```
+
+### Practical Example: Error Handling
+
+```typescript
+import { 
+  InteractionType, 
+  InteractionResponseType, 
+  InteractionResponseFlags 
+} from 'discord-interactions';
+
+// Handle a slash command
+if (body.type === InteractionType.APPLICATION_COMMAND) {
+  try {
+    // Process command...
+    return {
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: 'Command executed successfully!'
+      }
+    };
+  } catch (error) {
+    // Send ephemeral error message
+    return {
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `Error: ${error.message}`,
+        flags: InteractionResponseFlags.EPHEMERAL
+      }
+    };
+  }
+}
+```
+
+### Deferred Ephemeral Response
+
+You can also use flags with deferred responses:
+
+```typescript
+// Defer with ephemeral flag
+return {
+  type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+  data: {
+    flags: InteractionResponseFlags.EPHEMERAL
+  }
+};
+
+// Later, your follow-up message will also be ephemeral
+```
+
+## Bitwise Operations
+
+Since these are bit flags, you can perform bitwise operations:
+
+```typescript
+// Check if ephemeral flag is set
+const isEphemeral = (flags & InteractionResponseFlags.EPHEMERAL) !== 0;
+
+// Add ephemeral flag
+let flags = 0;
+flags |= InteractionResponseFlags.EPHEMERAL;
+
+// Remove ephemeral flag
+flags &= ~InteractionResponseFlags.EPHEMERAL;
+
+// Toggle ephemeral flag
+flags ^= InteractionResponseFlags.EPHEMERAL;
+```
+
+## Reference
+
+See the [Discord API Documentation](https://discord.com/developers/docs/resources/message#message-object-message-flags) for more information about message flags.

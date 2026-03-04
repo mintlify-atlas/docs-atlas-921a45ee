@@ -1,0 +1,343 @@
+---
+title: 'Webhook Events'
+description: 'Learn how to handle Discord webhook events for real-time notifications'
+---
+
+## Overview
+
+Discord Webhook Events allow your application to receive real-time notifications about activities in Discord servers where your app is installed. Unlike interactions, webhook events are one-way notifications that don't require an immediate response.
+
+## Webhook Types
+
+The library provides a `WebhookType` enum to identify the type of webhook request:
+
+```typescript
+enum WebhookType {
+  PING = 0,  // A ping from Discord
+  EVENT = 1, // A webhook event
+}
+```
+
+## Event Types
+
+Subscribe to various Discord events using the `WebhookEventType` enum:
+
+```typescript
+enum WebhookEventType {
+  APPLICATION_AUTHORIZED = 'APPLICATION_AUTHORIZED',
+  APPLICATION_DEAUTHORIZED = 'APPLICATION_DEAUTHORIZED',
+  ENTITLEMENT_CREATE = 'ENTITLEMENT_CREATE',
+  QUEST_USER_ENROLLMENT = 'QUEST_USER_ENROLLMENT',
+  LOBBY_MESSAGE_CREATE = 'LOBBY_MESSAGE_CREATE',
+  LOBBY_MESSAGE_UPDATE = 'LOBBY_MESSAGE_UPDATE',
+  LOBBY_MESSAGE_DELETE = 'LOBBY_MESSAGE_DELETE',
+  GAME_DIRECT_MESSAGE_CREATE = 'GAME_DIRECT_MESSAGE_CREATE',
+  GAME_DIRECT_MESSAGE_UPDATE = 'GAME_DIRECT_MESSAGE_UPDATE',
+  GAME_DIRECT_MESSAGE_DELETE = 'GAME_DIRECT_MESSAGE_DELETE',
+}
+```
+
+## Setting Up Webhook Events
+
+<Steps>
+  <Step title="Configure endpoint in Discord Developer Portal">
+    Set your webhook event URL in the Discord Developer Portal under your application settings.
+  </Step>
+
+  <Step title="Create your webhook endpoint">
+    Use the `verifyWebhookEventMiddleware` to handle events:
+
+    ```javascript
+    import express from 'express';
+    import { verifyWebhookEventMiddleware, WebhookType } from 'discord-interactions';
+
+    const app = express();
+
+    app.post('/events', 
+      verifyWebhookEventMiddleware(process.env.CLIENT_PUBLIC_KEY),
+      (req, res) => {
+        console.log('📨 Event Received!');
+        console.log(req.body);
+        
+        // Process the event
+        // Note: Response is already sent by middleware (204 No Content)
+      }
+    );
+    ```
+  </Step>
+
+  <Step title="Handle different event types">
+    Process events based on their type:
+
+    ```javascript
+    app.post('/events', 
+      verifyWebhookEventMiddleware(process.env.CLIENT_PUBLIC_KEY),
+      (req, res) => {
+        const event = req.body;
+        
+        switch (event.type) {
+          case WebhookType.PING:
+            // Handled automatically by middleware
+            break;
+            
+          case WebhookType.EVENT:
+            handleEvent(event);
+            break;
+        }
+      }
+    );
+    ```
+  </Step>
+</Steps>
+
+## Key Differences from Interactions
+
+<Note>
+  Webhook events are fundamentally different from interactions:
+  - **No response required**: The middleware automatically sends a 204 status code
+  - **One-way notifications**: Events inform your app about what happened
+  - **Asynchronous processing**: Handle events after responding to Discord
+</Note>
+
+## Automatic Response Handling
+
+The `verifyWebhookEventMiddleware` handles responses automatically:
+
+1. **PING events**: Returns `204 No Content`
+2. **Regular events**: Returns `204 No Content` and then calls `next()`
+3. **Invalid signatures**: Returns `401 Unauthorized`
+
+```javascript
+// The middleware handles the response, so you can focus on processing
+app.post('/events', 
+  verifyWebhookEventMiddleware(process.env.CLIENT_PUBLIC_KEY),
+  (req, res) => {
+    // Response already sent! Just process the event
+    const event = req.body;
+    processEventAsync(event); // Can be async or synchronous
+  }
+);
+```
+
+## Event Type Examples
+
+### Application Authorization
+
+Triggered when a user authorizes your app:
+
+```javascript
+function handleEvent(event) {
+  if (event.data?.event?.type === 'APPLICATION_AUTHORIZED') {
+    const { user, guild, scopes } = event.data.event;
+    
+    console.log(`App authorized by ${user.username}`);
+    if (guild) {
+      console.log(`In guild: ${guild.name}`);
+    }
+    
+    // Store authorization in your database
+    await saveAuthorization(user.id, guild?.id, scopes);
+  }
+}
+```
+
+### Application Deauthorization
+
+Handle when users revoke access:
+
+```javascript
+if (event.data?.event?.type === 'APPLICATION_DEAUTHORIZED') {
+  const { user } = event.data.event;
+  
+  console.log(`App deauthorized by ${user.username}`);
+  
+  // Clean up user data
+  await removeAuthorization(user.id);
+}
+```
+
+### Entitlement Events
+
+Track premium subscriptions and purchases:
+
+```javascript
+if (event.data?.event?.type === 'ENTITLEMENT_CREATE') {
+  const { entitlement } = event.data.event;
+  
+  console.log(`New entitlement: ${entitlement.sku_id}`);
+  
+  // Grant premium features
+  await grantPremiumAccess(entitlement.user_id, entitlement.sku_id);
+}
+```
+
+### Lobby Messages
+
+Handle messages in game lobbies:
+
+```javascript
+if (event.data?.event?.type === 'LOBBY_MESSAGE_CREATE') {
+  const { message, lobby_id } = event.data.event;
+  
+  console.log(`New lobby message: ${message.content}`);
+  
+  // Process lobby message
+  await handleLobbyMessage(lobby_id, message);
+}
+```
+
+### Game Direct Messages
+
+Process DMs during Social SDK sessions:
+
+```javascript
+if (event.data?.event?.type === 'GAME_DIRECT_MESSAGE_CREATE') {
+  const { message, channel_id } = event.data.event;
+  
+  console.log(`Game DM received: ${message.content}`);
+  
+  // Handle in-game communication
+  await processGameMessage(channel_id, message);
+}
+```
+
+## Complete Example
+
+Here's a full webhook event handler with all event types:
+
+```javascript
+import express from 'express';
+import { 
+  verifyWebhookEventMiddleware, 
+  WebhookType,
+  WebhookEventType 
+} from 'discord-interactions';
+
+const app = express();
+
+// Event handlers
+const eventHandlers = {
+  [WebhookEventType.APPLICATION_AUTHORIZED]: async (eventData) => {
+    console.log('App authorized:', eventData);
+    // Store authorization
+  },
+  
+  [WebhookEventType.APPLICATION_DEAUTHORIZED]: async (eventData) => {
+    console.log('App deauthorized:', eventData);
+    // Remove authorization
+  },
+  
+  [WebhookEventType.ENTITLEMENT_CREATE]: async (eventData) => {
+    console.log('Entitlement created:', eventData);
+    // Grant premium access
+  },
+  
+  [WebhookEventType.QUEST_USER_ENROLLMENT]: async (eventData) => {
+    console.log('User enrolled in quest:', eventData);
+    // Track quest enrollment
+  },
+  
+  [WebhookEventType.LOBBY_MESSAGE_CREATE]: async (eventData) => {
+    console.log('Lobby message:', eventData);
+    // Process lobby message
+  },
+  
+  [WebhookEventType.GAME_DIRECT_MESSAGE_CREATE]: async (eventData) => {
+    console.log('Game DM:', eventData);
+    // Handle game message
+  },
+};
+
+app.post('/events', 
+  verifyWebhookEventMiddleware(process.env.CLIENT_PUBLIC_KEY),
+  async (req, res) => {
+    const event = req.body;
+    
+    if (event.type === WebhookType.EVENT) {
+      const eventType = event.data?.event?.type;
+      const handler = eventHandlers[eventType];
+      
+      if (handler) {
+        try {
+          await handler(event.data.event);
+        } catch (error) {
+          console.error(`Error handling ${eventType}:`, error);
+        }
+      } else {
+        console.log(`Unhandled event type: ${eventType}`);
+      }
+    }
+  }
+);
+
+app.listen(8999, () => {
+  console.log('Webhook server listening on port 8999');
+});
+```
+
+## Best Practices
+
+<Warning>
+  Do not use body-parsing middleware (like `body-parser` or `express.json()`) on webhook event routes. The middleware needs access to the raw request body for signature verification.
+</Warning>
+
+<Info>
+  Webhook events are delivered at-least-once. Design your event handlers to be idempotent to handle potential duplicate deliveries.
+</Info>
+
+<Note>
+  Events are processed asynchronously after the 204 response is sent. Make sure your event handlers catch and log errors properly.
+</Note>
+
+## Error Handling
+
+Implement robust error handling for webhook events:
+
+```javascript
+app.post('/events', 
+  verifyWebhookEventMiddleware(process.env.CLIENT_PUBLIC_KEY),
+  async (req, res) => {
+    try {
+      const event = req.body;
+      await processEvent(event);
+    } catch (error) {
+      // Log error but don't fail - response already sent
+      console.error('Error processing webhook event:', error);
+      
+      // Optionally send to error tracking service
+      await errorTracker.captureException(error, {
+        extra: { event: req.body }
+      });
+    }
+  }
+);
+```
+
+## Testing Webhook Events
+
+Use the Discord Developer Portal to trigger test events:
+
+```javascript
+// Add detailed logging for development
+if (process.env.NODE_ENV === 'development') {
+  app.post('/events', 
+    verifyWebhookEventMiddleware(process.env.CLIENT_PUBLIC_KEY),
+    (req, res) => {
+      console.log('📨 Event Received!');
+      console.log(JSON.stringify(req.body, null, 2));
+    }
+  );
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Interactions" icon="bolt" href="/guides/interactions">
+    Learn about handling Discord interactions
+  </Card>
+  
+  <Card title="Signature Verification" icon="shield-check" href="/guides/signature-verification">
+    Understand how signature verification works
+  </Card>
+</CardGroup>

@@ -1,0 +1,77 @@
+---
+title: Installation
+description: Install the discord-interactions SDK for handling Discord webhooks and interactions
+---
+
+## Prerequisites
+
+Before installing discord-interactions, make sure you have Node.js installed:
+
+<Info>
+  **Minimum Node.js version**: 18.4.0 or higher
+</Info>
+
+You can check your Node.js version by running:
+
+```bash
+node --version
+```
+
+## Install the Package
+
+Install the discord-interactions package using your preferred package manager:
+
+<CodeGroup>
+
+```bash npm
+npm install discord-interactions
+```
+
+```bash yarn
+yarn add discord-interactions
+```
+
+```bash pnpm
+pnpm add discord-interactions
+```
+
+</CodeGroup>
+
+## TypeScript Support
+
+The package includes TypeScript definitions out of the box. No additional `@types` package is needed.
+
+<Info>
+  The package exports types from `dist/index.d.ts` and includes full TypeScript support for all interactions, webhook events, and message components.
+</Info>
+
+## Verify Installation
+
+After installation, you can verify the package is working by importing it in your project:
+
+<CodeGroup>
+
+```javascript JavaScript
+const { InteractionType, InteractionResponseType, verifyKeyMiddleware } = require('discord-interactions');
+
+console.log('discord-interactions installed successfully!');
+```
+
+```typescript TypeScript
+import { InteractionType, InteractionResponseType, verifyKeyMiddleware } from 'discord-interactions';
+
+console.log('discord-interactions installed successfully!');
+```
+
+</CodeGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+    Build your first Discord webhook handler
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/verify-key-middleware">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>

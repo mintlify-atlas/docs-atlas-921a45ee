@@ -1,0 +1,193 @@
+---
+title: InteractionResponseType
+description: Enum representing the type of response to send to a Discord interaction
+---
+
+# InteractionResponseType
+
+The `InteractionResponseType` enum represents the type of response that is being sent to Discord after receiving an interaction.
+
+## Enum Values
+
+### PONG
+
+**Value:** `1`
+
+Acknowledge a `PING` interaction. Used to respond to Discord's health check pings.
+
+```typescript
+InteractionResponseType.PONG // 1
+```
+
+### CHANNEL_MESSAGE_WITH_SOURCE
+
+**Value:** `4`
+
+Respond with a message, showing the user's input. This sends a message immediately to the channel.
+
+```typescript
+InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE // 4
+```
+
+### DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+
+**Value:** `5`
+
+Acknowledge a command without sending a message, showing the user's input. This displays a loading state to the user and requires a follow-up message within 15 minutes.
+
+```typescript
+InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE // 5
+```
+
+### DEFERRED_UPDATE_MESSAGE
+
+**Value:** `6`
+
+Acknowledge an interaction and edit the original message that contains the component later. The user does not see a loading state.
+
+```typescript
+InteractionResponseType.DEFERRED_UPDATE_MESSAGE // 6
+```
+
+### UPDATE_MESSAGE
+
+**Value:** `7`
+
+Edit the message the component was attached to. Used for component interactions to update the message in place.
+
+```typescript
+InteractionResponseType.UPDATE_MESSAGE // 7
+```
+
+### APPLICATION_COMMAND_AUTOCOMPLETE_RESULT
+
+**Value:** `8`
+
+Callback for an app to define the autocomplete results to show to the user.
+
+```typescript
+InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT // 8
+```
+
+### MODAL
+
+**Value:** `9`
+
+Respond with a modal dialog for the user to fill out.
+
+```typescript
+InteractionResponseType.MODAL // 9
+```
+
+### PREMIUM_REQUIRED
+
+**Value:** `10`
+
+Respond with an upgrade prompt to show that the feature requires a premium subscription.
+
+```typescript
+InteractionResponseType.PREMIUM_REQUIRED // 10
+```
+
+### LAUNCH_ACTIVITY
+
+**Value:** `12`
+
+Launch an Activity (Discord's embedded applications).
+
+```typescript
+InteractionResponseType.LAUNCH_ACTIVITY // 12
+```
+
+## Usage Examples
+
+### Responding to a Ping
+
+```typescript
+import { InteractionType, InteractionResponseType } from 'discord-interactions';
+
+if (body.type === InteractionType.PING) {
+  return {
+    type: InteractionResponseType.PONG
+  };
+}
+```
+
+### Sending an Immediate Message
+
+```typescript
+return {
+  type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+  data: {
+    content: 'Hello! This is an immediate response.'
+  }
+};
+```
+
+### Deferring a Response
+
+```typescript
+// Send a deferred response for long-running operations
+return {
+  type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+};
+
+// Later, send a follow-up message via webhook
+```
+
+### Updating a Component Message
+
+```typescript
+// For button clicks or select menu interactions
+return {
+  type: InteractionResponseType.UPDATE_MESSAGE,
+  data: {
+    content: 'Updated message!',
+    components: [] // Clear components
+  }
+};
+```
+
+### Showing a Modal
+
+```typescript
+return {
+  type: InteractionResponseType.MODAL,
+  data: {
+    custom_id: 'my_modal',
+    title: 'Feedback Form',
+    components: [
+      {
+        type: 1, // Action Row
+        components: [
+          {
+            type: 4, // Text Input
+            custom_id: 'feedback',
+            label: 'What is your feedback?',
+            style: 2, // Paragraph
+            required: true
+          }
+        ]
+      }
+    ]
+  }
+};
+```
+
+### Autocomplete Response
+
+```typescript
+return {
+  type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+  data: {
+    choices: [
+      { name: 'Option 1', value: 'opt1' },
+      { name: 'Option 2', value: 'opt2' }
+    ]
+  }
+};
+```
+
+## Reference
+
+See the [Discord API Documentation](https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-response-object-interaction-callback-type) for more information about interaction response types.

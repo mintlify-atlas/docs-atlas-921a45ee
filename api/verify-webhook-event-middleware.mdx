@@ -1,0 +1,175 @@
+---
+title: verifyWebhookEventMiddleware
+description: Creates Express middleware for verifying Discord Event Webhooks
+---
+
+## Function Signature
+
+```typescript
+function verifyWebhookEventMiddleware(
+  clientPublicKey: string,
+): (req: Request, res: Response, next: NextFunction) => void
+```
+
+## Description
+
+Creates a middleware function for use in Express-compatible web servers for verifying Event Webhooks from Discord. Unlike interaction webhooks, event webhooks are asynchronous and expect a `204 No Content` response immediately, while the event is processed after the response is sent.
+
+## Parameters
+
+<ParamField path="clientPublicKey" type="string" required>
+  The public key from the Discord developer dashboard. This is used to verify the Ed25519 signature of incoming webhook event requests.
+</ParamField>
+
+## Returns
+
+<ResponseField name="middleware" type="(req: Request, res: Response, next: NextFunction) => void">
+  An Express middleware function that validates incoming Discord webhook event requests.
+</ResponseField>
+
+## Behavior
+
+The middleware performs the following actions:
+
+1. **Signature Validation**: Extracts `X-Signature-Ed25519` and `X-Signature-Timestamp` headers and validates the request using the `verifyKey` function
+2. **Invalid Signature Handling**: Returns `401 Unauthorized` if the signature is missing or invalid
+3. **PING Auto-Response**: Automatically responds with `204 No Content` for Discord's PING webhook events (used for initial endpoint verification)
+4. **Immediate Response**: Returns `204 No Content` for valid webhook events before processing
+5. **Async Processing**: Calls `next()` AFTER sending the response, allowing you to process the event asynchronously
+6. **Body Parsing**: Parses the JSON body and attaches it to `req.body` before calling `next()`
+
+## Usage Example
+
+### Basic Setup
+
+```typescript
+import express from 'express';
+import { verifyWebhookEventMiddleware, WebhookEventType } from 'discord-interactions';
+
+const app = express();
+
+app.post('/webhooks', verifyWebhookEventMiddleware(process.env.DISCORD_PUBLIC_KEY), (req, res) => {
+  // Response has already been sent with 204 No Content
+  // Process the webhook event asynchronously
+  const event = req.body;
+  
+  console.log('Received webhook event:', event.type);
+  
+  // Handle the event without worrying about response time
+  processEvent(event);
+});
+
+async function processEvent(event) {
+  // Your event processing logic here
+}
+
+app.listen(3000);
+```
+
+### With Event Type Handling
+
+```typescript
+import express from 'express';
+import { verifyWebhookEventMiddleware, WebhookEventType } from 'discord-interactions';
+
+const app = express();
+
+app.post('/webhooks', verifyWebhookEventMiddleware(process.env.DISCORD_PUBLIC_KEY), async (req, res) => {
+  const { type, event } = req.body;
+  
+  // Response already sent, process the event
+  switch (type) {
+    case WebhookEventType.APPLICATION_AUTHORIZED:
+      console.log('App authorized:', event);
+      await handleAppAuthorized(event);
+      break;
+    
+    case WebhookEventType.ENTITLEMENT_CREATE:
+      console.log('Entitlement created:', event);
+      await handleEntitlementCreated(event);
+      break;
+    
+    case WebhookEventType.QUEST_USER_ENROLLMENT:
+      console.log('User enrolled in quest:', event);
+      await handleQuestEnrollment(event);
+      break;
+    
+    default:
+      console.log('Unknown event type:', type);
+  }
+});
+
+app.listen(3000);
+```
+
+### With Error Handling
+
+```typescript
+import express from 'express';
+import { verifyWebhookEventMiddleware } from 'discord-interactions';
+
+const app = express();
+
+app.post('/webhooks', verifyWebhookEventMiddleware(process.env.DISCORD_PUBLIC_KEY), async (req, res) => {
+  try {
+    const event = req.body;
+    
+    // Process event with timeout
+    await Promise.race([
+      processWebhookEvent(event),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Processing timeout')), 30000)
+      ),
+    ]);
+  } catch (error) {
+    console.error('Error processing webhook event:', error);
+    // Log to your error tracking service
+  }
+});
+
+app.listen(3000);
+```
+
+## Important Notes
+
+<Warning>
+  The middleware expects `req.body` to be a raw `Buffer`. Disable body parsing middleware (like `express.json()`) for your webhook endpoint to ensure proper signature verification.
+</Warning>
+
+<Info>
+  Unlike `verifyKeyMiddleware`, this middleware sends the HTTP response BEFORE calling `next()`. Your handler code runs asynchronously after Discord has already received the `204 No Content` response.
+</Info>
+
+<Note>
+  If `req.body` has been modified by other middleware, the function will attempt to reconstruct the raw buffer, but this is risky and may fail. The middleware will log a warning in this case.
+</Note>
+
+## Response Behavior
+
+| Scenario | Status Code | Body | next() Called |
+|----------|-------------|------|---------------|
+| Missing/invalid signature | 401 | `[discord-interactions] Invalid signature` | No |
+| PING event | 204 | Empty | No |
+| Valid webhook event | 204 | Empty | Yes (after response) |
+
+## Key Differences from verifyKeyMiddleware
+
+1. **Response Timing**: Sends `204 No Content` immediately, then processes the event
+2. **PING Handling**: Returns `204` for PING (vs `200` with PONG JSON for interactions)
+3. **Use Case**: For asynchronous event notifications (vs synchronous interaction responses)
+4. **Processing Model**: Fire-and-forget event processing (vs request-response for interactions)
+
+## Error Handling
+
+The middleware will return a `401 Unauthorized` response with the message `[discord-interactions] Invalid signature` in the following cases:
+
+- Missing `X-Signature-Ed25519` or `X-Signature-Timestamp` headers
+- Invalid signature that fails verification
+- Malformed request data
+
+## See Also
+
+- [verifyKey](/api/verify-key) - Low-level signature verification function
+- [verifyKeyMiddleware](/api/verify-key-middleware) - Middleware for interaction webhooks
+- [WebhookType](/api/webhook-type) - Enum of webhook types
+- [WebhookEventType](/api/webhook-event-type) - Enum of webhook event types

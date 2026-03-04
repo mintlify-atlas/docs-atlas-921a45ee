@@ -1,0 +1,108 @@
+---
+title: InteractionType
+description: Enum representing the type of interaction received from Discord
+---
+
+# InteractionType
+
+The `InteractionType` enum represents the type of interaction this request is from Discord.
+
+## Enum Values
+
+### PING
+
+**Value:** `1`
+
+A ping interaction sent by Discord to verify your endpoint.
+
+```typescript
+InteractionType.PING // 1
+```
+
+### APPLICATION_COMMAND
+
+**Value:** `2`
+
+A command invocation interaction, triggered when a user uses a slash command, user command, or message command.
+
+```typescript
+InteractionType.APPLICATION_COMMAND // 2
+```
+
+### MESSAGE_COMPONENT
+
+**Value:** `3`
+
+An interaction triggered by usage of a message's component (buttons, select menus, etc.).
+
+```typescript
+InteractionType.MESSAGE_COMPONENT // 3
+```
+
+### APPLICATION_COMMAND_AUTOCOMPLETE
+
+**Value:** `4`
+
+An interaction sent when an application command option is filled out and autocomplete is triggered.
+
+```typescript
+InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE // 4
+```
+
+### MODAL_SUBMIT
+
+**Value:** `5`
+
+An interaction sent when a modal is submitted by a user.
+
+```typescript
+InteractionType.MODAL_SUBMIT // 5
+```
+
+## Usage Example
+
+```typescript
+import { InteractionType, InteractionResponseType } from 'discord-interactions';
+
+// Check the interaction type
+if (body.type === InteractionType.PING) {
+  return {
+    type: InteractionResponseType.PONG
+  };
+}
+
+if (body.type === InteractionType.APPLICATION_COMMAND) {
+  // Handle slash command
+  return {
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: {
+      content: 'Command received!'
+    }
+  };
+}
+
+if (body.type === InteractionType.MESSAGE_COMPONENT) {
+  // Handle button click or select menu
+  return {
+    type: InteractionResponseType.UPDATE_MESSAGE,
+    data: {
+      content: 'Button clicked!'
+    }
+  };
+}
+
+if (body.type === InteractionType.MODAL_SUBMIT) {
+  // Handle modal submission
+  const values = body.data.components;
+  return {
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: {
+      content: 'Modal submitted!'
+    }
+  };
+}
+```
+
+## Reference
+
+See the [Discord API Documentation](https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object-interaction-type) for more information about interaction types.

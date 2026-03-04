@@ -1,0 +1,116 @@
+---
+title: ButtonStyleTypes
+description: Enum defining the visual styles available for button components
+---
+
+## Overview
+
+The `ButtonStyleTypes` enum defines the visual appearance of button components. Each style has a different color and purpose.
+
+## Enum Values
+
+```typescript
+enum ButtonStyleTypes {
+  PRIMARY = 1,
+  SECONDARY = 2,
+  SUCCESS = 3,
+  DANGER = 4,
+  LINK = 5,
+  PREMIUM = 6,
+}
+```
+
+## Button Styles
+
+### PRIMARY (1)
+Blurple button, used for primary actions.
+
+**Visual:** Blue/Blurple colored button
+
+### SECONDARY (2)
+Gray button, used for secondary actions.
+
+**Visual:** Gray colored button
+
+### SUCCESS (3)
+Green button, used for positive or success actions.
+
+**Visual:** Green colored button
+
+### DANGER (4)
+Red button, used for destructive or dangerous actions.
+
+**Visual:** Red colored button
+
+### LINK (5)
+Link button, navigates to a URL when clicked.
+
+**Visual:** Gray button with link icon
+**Note:** Link buttons must include a `url` property and cannot have a `custom_id`.
+
+### PREMIUM (6)
+Premium button, used for premium SKU purchases.
+
+**Visual:** Purple button with premium styling
+**Note:** Premium buttons must include a `sku_id` property.
+
+## Usage Examples
+
+### Custom Button
+
+```typescript
+import { MessageComponentTypes, ButtonStyleTypes } from 'discord.js';
+
+const primaryButton = {
+  type: MessageComponentTypes.BUTTON,
+  style: ButtonStyleTypes.PRIMARY,
+  label: 'Primary Action',
+  custom_id: 'primary_button',
+};
+
+const dangerButton = {
+  type: MessageComponentTypes.BUTTON,
+  style: ButtonStyleTypes.DANGER,
+  label: 'Delete',
+  custom_id: 'delete_button',
+  disabled: false,
+};
+```
+
+### Link Button
+
+```typescript
+const linkButton = {
+  type: MessageComponentTypes.BUTTON,
+  style: ButtonStyleTypes.LINK,
+  label: 'Visit Website',
+  url: 'https://discord.com',
+};
+```
+
+### Premium Button
+
+```typescript
+const premiumButton = {
+  type: MessageComponentTypes.BUTTON,
+  style: ButtonStyleTypes.PREMIUM,
+  sku_id: '1234567890',
+};
+```
+
+## Button Style Constraints
+
+- **Custom Buttons:** Can use PRIMARY, SECONDARY, SUCCESS, or DANGER styles and require a `custom_id`
+- **Link Buttons:** Must use LINK style and require a `url` instead of `custom_id`
+- **Premium Buttons:** Must use PREMIUM style and require a `sku_id`
+
+## Visual Reference
+
+| Style | Color | Use Case |
+|-------|-------|----------|
+| PRIMARY | Blurple | Primary actions, main call-to-action |
+| SECONDARY | Gray | Secondary actions, less emphasis |
+| SUCCESS | Green | Confirmations, positive actions |
+| DANGER | Red | Destructive actions, warnings |
+| LINK | Gray | External links, navigation |
+| PREMIUM | Purple | Premium SKU purchases |

@@ -1,0 +1,179 @@
+---
+title: WebhookEventType
+description: Enum representing the event types that an app can subscribe to via webhooks
+---
+
+The `WebhookEventType` enum defines all the event types that your Discord application can subscribe to and receive via webhooks.
+
+## Reference
+
+For more information, see the [Discord Developer Documentation](https://discord.com/developers/docs/events/webhook-events#event-types).
+
+## Enum Values
+
+### APPLICATION_AUTHORIZED
+
+```typescript
+WebhookEventType.APPLICATION_AUTHORIZED = 'APPLICATION_AUTHORIZED'
+```
+
+Event sent when an app was authorized by a user to a server or their account.
+
+### APPLICATION_DEAUTHORIZED
+
+```typescript
+WebhookEventType.APPLICATION_DEAUTHORIZED = 'APPLICATION_DEAUTHORIZED'
+```
+
+Event sent when an app was deauthorized by a user.
+
+### ENTITLEMENT_CREATE
+
+```typescript
+WebhookEventType.ENTITLEMENT_CREATE = 'ENTITLEMENT_CREATE'
+```
+
+Event sent when an entitlement was created. This is typically used for monetization and premium features.
+
+### QUEST_USER_ENROLLMENT
+
+```typescript
+WebhookEventType.QUEST_USER_ENROLLMENT = 'QUEST_USER_ENROLLMENT'
+```
+
+Event sent when a user was added to a Quest.
+
+### LOBBY_MESSAGE_CREATE
+
+```typescript
+WebhookEventType.LOBBY_MESSAGE_CREATE = 'LOBBY_MESSAGE_CREATE'
+```
+
+Event sent when a message is created in a lobby.
+
+### LOBBY_MESSAGE_UPDATE
+
+```typescript
+WebhookEventType.LOBBY_MESSAGE_UPDATE = 'LOBBY_MESSAGE_UPDATE'
+```
+
+Event sent when a message is updated in a lobby.
+
+### LOBBY_MESSAGE_DELETE
+
+```typescript
+WebhookEventType.LOBBY_MESSAGE_DELETE = 'LOBBY_MESSAGE_DELETE'
+```
+
+Event sent when a message is deleted from a lobby.
+
+### GAME_DIRECT_MESSAGE_CREATE
+
+```typescript
+WebhookEventType.GAME_DIRECT_MESSAGE_CREATE = 'GAME_DIRECT_MESSAGE_CREATE'
+```
+
+Event sent when a direct message is created during an active Social SDK session.
+
+### GAME_DIRECT_MESSAGE_UPDATE
+
+```typescript
+WebhookEventType.GAME_DIRECT_MESSAGE_UPDATE = 'GAME_DIRECT_MESSAGE_UPDATE'
+```
+
+Event sent when a direct message is updated during an active Social SDK session.
+
+### GAME_DIRECT_MESSAGE_DELETE
+
+```typescript
+WebhookEventType.GAME_DIRECT_MESSAGE_DELETE = 'GAME_DIRECT_MESSAGE_DELETE'
+```
+
+Event sent when a direct message is deleted during an active Social SDK session.
+
+## Usage Example
+
+```typescript
+import { WebhookEventType } from './webhooks';
+
+function subscribeToEvents() {
+  // Subscribe to specific webhook events
+  const events = [
+    WebhookEventType.APPLICATION_AUTHORIZED,
+    WebhookEventType.ENTITLEMENT_CREATE,
+    WebhookEventType.LOBBY_MESSAGE_CREATE,
+  ];
+  
+  return events;
+}
+
+function handleWebhookEvent(eventType: WebhookEventType, data: any) {
+  switch (eventType) {
+    case WebhookEventType.APPLICATION_AUTHORIZED:
+      console.log('App authorized for user:', data.user_id);
+      break;
+    
+    case WebhookEventType.ENTITLEMENT_CREATE:
+      console.log('New entitlement created:', data.entitlement_id);
+      break;
+    
+    case WebhookEventType.LOBBY_MESSAGE_CREATE:
+      console.log('New lobby message:', data.message_id);
+      break;
+    
+    case WebhookEventType.GAME_DIRECT_MESSAGE_CREATE:
+      console.log('New game DM:', data.message_id);
+      break;
+    
+    default:
+      console.log('Unhandled event type:', eventType);
+  }
+}
+```
+
+## Type Definition
+
+```typescript
+export enum WebhookEventType {
+  /**
+   * Event sent when an app was authorized by a user to a server or their account.
+   */
+  APPLICATION_AUTHORIZED = 'APPLICATION_AUTHORIZED',
+  /**
+   * Event sent when an app was deauthorized by a user.
+   */
+  APPLICATION_DEAUTHORIZED = 'APPLICATION_DEAUTHORIZED',
+  /**
+   * Event sent when an entitlement was created.
+   */
+  ENTITLEMENT_CREATE = 'ENTITLEMENT_CREATE',
+  /**
+   * Event sent when a user was added to a Quest.
+   */
+  QUEST_USER_ENROLLMENT = 'QUEST_USER_ENROLLMENT',
+  /**
+   * Event sent when a message is created in a lobby.
+   */
+  LOBBY_MESSAGE_CREATE = 'LOBBY_MESSAGE_CREATE',
+  /**
+   * Event sent when a message is updated in a lobby.
+   */
+  LOBBY_MESSAGE_UPDATE = 'LOBBY_MESSAGE_UPDATE',
+  /**
+   * Event sent when a message is deleted from a lobby.
+   */
+  LOBBY_MESSAGE_DELETE = 'LOBBY_MESSAGE_DELETE',
+  /**
+   * Event sent when a direct message is created during an active Social SDK session.
+   */
+  GAME_DIRECT_MESSAGE_CREATE = 'GAME_DIRECT_MESSAGE_CREATE',
+  /**
+   * Event sent when a direct message is updated during an active Social SDK session.
+   */
+  GAME_DIRECT_MESSAGE_UPDATE = 'GAME_DIRECT_MESSAGE_UPDATE',
+  /**
+   * Event sent when a direct message is deleted during an active Social SDK session.
+   */
+  GAME_DIRECT_MESSAGE_DELETE = 'GAME_DIRECT_MESSAGE_DELETE',
+}
+```

@@ -1,0 +1,131 @@
+---
+title: TextStyleTypes
+description: Enum defining the visual styles available for text input components
+---
+
+## Overview
+
+The `TextStyleTypes` enum defines the layout and appearance of text input components used in modals and forms.
+
+## Enum Values
+
+```typescript
+enum TextStyleTypes {
+  SHORT = 1,
+  PARAGRAPH = 2,
+}
+```
+
+## Text Input Styles
+
+### SHORT (1)
+Single-line text input field.
+
+**Use Cases:**
+- Short text entries
+- Names, titles, or single words
+- Limited character inputs
+
+**Visual:** A single-line input box
+
+### PARAGRAPH (2)
+Multi-line text input field.
+
+**Use Cases:**
+- Long-form text
+- Descriptions or comments
+- Multiple sentences or paragraphs
+
+**Visual:** A multi-line text area that allows for larger text input
+
+## Usage Examples
+
+### Short Text Input
+
+```typescript
+import { MessageComponentTypes, TextStyleTypes } from 'discord.js';
+
+const shortInput = {
+  type: MessageComponentTypes.INPUT_TEXT,
+  custom_id: 'username_input',
+  style: TextStyleTypes.SHORT,
+  label: 'Username',
+  placeholder: 'Enter your username',
+  min_length: 3,
+  max_length: 32,
+  required: true,
+};
+```
+
+### Paragraph Text Input
+
+```typescript
+const paragraphInput = {
+  type: MessageComponentTypes.INPUT_TEXT,
+  custom_id: 'feedback_input',
+  style: TextStyleTypes.PARAGRAPH,
+  label: 'Feedback',
+  placeholder: 'Tell us what you think...',
+  min_length: 10,
+  max_length: 1000,
+  required: false,
+};
+```
+
+### Complete Modal Example
+
+```typescript
+const modal = {
+  title: 'User Feedback',
+  custom_id: 'feedback_modal',
+  components: [
+    {
+      type: MessageComponentTypes.ACTION_ROW,
+      components: [
+        {
+          type: MessageComponentTypes.INPUT_TEXT,
+          custom_id: 'subject',
+          style: TextStyleTypes.SHORT,
+          label: 'Subject',
+          placeholder: 'Brief summary',
+          required: true,
+        },
+      ],
+    },
+    {
+      type: MessageComponentTypes.ACTION_ROW,
+      components: [
+        {
+          type: MessageComponentTypes.INPUT_TEXT,
+          custom_id: 'details',
+          style: TextStyleTypes.PARAGRAPH,
+          label: 'Details',
+          placeholder: 'Provide more information...',
+          min_length: 20,
+          max_length: 2000,
+          required: true,
+        },
+      ],
+    },
+  ],
+};
+```
+
+## Style Comparison
+
+| Style | Lines | Best For | Max Length |
+|-------|-------|----------|------------|
+| SHORT | Single | Names, titles, short answers | Typically 1-100 chars |
+| PARAGRAPH | Multiple | Descriptions, feedback, long text | Typically 100+ chars |
+
+## Properties Available with Text Inputs
+
+Text input components support the following properties regardless of style:
+
+- `custom_id` - Unique identifier (required)
+- `label` - Field label shown to users (optional)
+- `placeholder` - Placeholder text (optional)
+- `min_length` - Minimum character length (optional)
+- `max_length` - Maximum character length (optional)
+- `required` - Whether the field is required (optional, defaults to true)
+- `value` - Pre-filled value (optional)

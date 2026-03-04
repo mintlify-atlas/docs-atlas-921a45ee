@@ -1,0 +1,499 @@
+---
+title: "Modal Interactions"
+description: "Create interactive forms and collect user input using Discord modals"
+---
+
+This example demonstrates how to create and handle modal interactions in Discord. Modals allow you to collect complex user input through form-like interfaces with text inputs.
+
+## What You'll Learn
+
+- Creating modal responses to slash commands
+- Building modal forms with text inputs
+- Handling different input styles (short and paragraph)
+- Working with required and optional fields
+- Understanding modal component structure
+
+## Prerequisites
+
+<Note>
+Before you begin, make sure you have:
+- An Express server set up (see [Express App example](/examples/express-app))
+- A Discord application with a slash command configured
+- Basic understanding of Discord interaction types
+</Note>
+
+## Complete Example
+
+```javascript
+const express = require('express');
+const {
+	InteractionType,
+	InteractionResponseType,
+	verifyKeyMiddleware,
+} = require('discord-interactions');
+
+const app = express();
+
+app.post(
+	'/interactions',
+	verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+	(req, res) => {
+		const interaction = req.body;
+		if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+			res.send({
+				type: InteractionResponseType.MODAL,
+				data: {
+					title: 'Test',
+					custom_id: 'test-modal',
+					components: [
+						{
+							type: 1,
+							components: [
+								{
+									type: 4,
+									style: 1,
+									label: 'Short Input',
+									custom_id: 'short-input',
+									placeholder: 'Short Input',
+								},
+							],
+						},
+						{
+							type: 1,
+							components: [
+								{
+									type: 4,
+									style: 1,
+									label: 'Paragraph Input',
+									custom_id: 'paragraph-input',
+									placeholder: 'Paragraph Input',
+									required: false,
+								},
+							],
+						},
+					],
+				},
+			});
+		}
+	},
+);
+
+app.listen(8999, () => {
+	console.log('Example app listening at http://localhost:8999');
+});
+```
+
+## Understanding Modal Components
+
+### Modal Response Structure
+
+When responding to an interaction with a modal:
+
+```javascript
+{
+  type: InteractionResponseType.MODAL,
+  data: {
+    title: 'Modal Title',           // The title shown at the top
+    custom_id: 'unique-modal-id',   // Identifier for handling submission
+    components: [/* ... */]          // Array of action rows
+  }
+}
+```
+
+### Component Types
+
+Modals use numeric component types:
+
+| Type | Component | Description |
+|------|-----------|-------------|
+| `1` | Action Row | Container for input components |
+| `4` | Text Input | Input field for text |
+
+<Info>
+Action rows (type 1) are required containers for text inputs. Each text input must be wrapped in its own action row.
+</Info>
+
+### Text Input Structure
+
+```javascript
+{
+  type: 4,                          // Text input type
+  style: 1,                         // 1 = short, 2 = paragraph
+  label: 'Label shown to user',
+  custom_id: 'unique-input-id',     // Used to identify this input in submission
+  placeholder: 'Placeholder text',  // Optional placeholder
+  required: true,                   // Optional, defaults to true
+  min_length: 1,                    // Optional minimum length
+  max_length: 100,                  // Optional maximum length
+  value: 'Pre-filled text'          // Optional default value
+}
+```
+
+## Input Styles
+
+### Short Input (style: 1)
+
+Best for single-line text like usernames, titles, or short answers:
+
+```javascript
+{
+  type: 4,
+  style: 1,  // Short, single-line input
+  label: 'Username',
+  custom_id: 'username-input',
+  placeholder: 'Enter your username',
+  min_length: 3,
+  max_length: 20,
+}
+```
+
+### Paragraph Input (style: 2)
+
+Best for longer text like descriptions, feedback, or multi-line responses:
+
+```javascript
+{
+  type: 4,
+  style: 2,  // Paragraph, multi-line input
+  label: 'Feedback',
+  custom_id: 'feedback-input',
+  placeholder: 'Tell us what you think...',
+  min_length: 10,
+  max_length: 1000,
+  required: false,
+}
+```
+
+## Complete Modal Example
+
+Here's a more comprehensive example with modal submission handling:
+
+```javascript
+const express = require('express');
+const {
+	InteractionType,
+	InteractionResponseType,
+	verifyKeyMiddleware,
+} = require('discord-interactions');
+
+const app = express();
+
+app.post(
+	'/interactions',
+	verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+	(req, res) => {
+		const interaction = req.body;
+
+		// Show modal when command is used
+		if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+			return res.send({
+				type: InteractionResponseType.MODAL,
+				data: {
+					title: 'Feedback Form',
+					custom_id: 'feedback-modal',
+					components: [
+						{
+							type: 1,
+							components: [
+								{
+									type: 4,
+									style: 1,
+									label: 'What feature are you suggesting?',
+									custom_id: 'feature-name',
+									placeholder: 'e.g., Dark mode toggle',
+									required: true,
+									max_length: 100,
+								},
+							],
+						},
+						{
+							type: 1,
+							components: [
+								{
+									type: 4,
+									style: 2,
+									label: 'Describe your suggestion',
+									custom_id: 'feature-description',
+									placeholder: 'Provide as much detail as possible...',
+									required: true,
+									min_length: 10,
+									max_length: 1000,
+								},
+							],
+						},
+						{
+							type: 1,
+							components: [
+								{
+									type: 4,
+									style: 1,
+									label: 'Priority (High/Medium/Low)',
+									custom_id: 'priority',
+									placeholder: 'Medium',
+									required: false,
+									max_length: 10,
+								},
+							],
+						},
+					],
+				},
+			});
+		}
+
+		// Handle modal submission
+		if (interaction.type === InteractionType.MODAL_SUBMIT) {
+			const modalId = interaction.data.custom_id;
+			
+			if (modalId === 'feedback-modal') {
+				// Extract values from the modal submission
+				const components = interaction.data.components;
+				const featureName = components[0].components[0].value;
+				const description = components[1].components[0].value;
+				const priority = components[2].components[0].value || 'Not specified';
+
+				// Respond to the user
+				return res.send({
+					type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+					data: {
+						content: `Thank you for your feedback!\n\n` +
+							`**Feature:** ${featureName}\n` +
+							`**Description:** ${description}\n` +
+							`**Priority:** ${priority}`,
+					},
+				});
+			}
+		}
+	},
+);
+
+app.listen(8999, () => {
+	console.log('Example app listening at http://localhost:8999');
+});
+```
+
+## Handling Modal Submissions
+
+When a user submits a modal, Discord sends a `MODAL_SUBMIT` interaction:
+
+```javascript
+if (interaction.type === InteractionType.MODAL_SUBMIT) {
+	const modalId = interaction.data.custom_id;
+	const components = interaction.data.components;
+	
+	// Access input values
+	components.forEach((actionRow, index) => {
+		const input = actionRow.components[0];
+		console.log(`Input ${index}:`, input.custom_id, '=', input.value);
+	});
+}
+```
+
+### Extracting Values
+
+```javascript
+// Get a specific input value by index
+const firstInput = interaction.data.components[0].components[0].value;
+
+// Or create a helper function
+function getModalValue(components, customId) {
+	for (const actionRow of components) {
+		const input = actionRow.components.find(c => c.custom_id === customId);
+		if (input) return input.value;
+	}
+	return null;
+}
+
+// Usage
+const username = getModalValue(interaction.data.components, 'username-input');
+```
+
+## Use Cases
+
+<Accordion title="User Registration">
+```javascript
+{
+  title: 'Register Your Account',
+  custom_id: 'registration-modal',
+  components: [
+    {
+      type: 1,
+      components: [{
+        type: 4,
+        style: 1,
+        label: 'Email Address',
+        custom_id: 'email',
+        placeholder: 'your@email.com',
+        required: true,
+      }],
+    },
+    {
+      type: 1,
+      components: [{
+        type: 4,
+        style: 1,
+        label: 'Display Name',
+        custom_id: 'display-name',
+        placeholder: 'How should we call you?',
+        max_length: 32,
+      }],
+    },
+  ],
+}
+```
+</Accordion>
+
+<Accordion title="Bug Report">
+```javascript
+{
+  title: 'Report a Bug',
+  custom_id: 'bug-report-modal',
+  components: [
+    {
+      type: 1,
+      components: [{
+        type: 4,
+        style: 1,
+        label: 'Bug Title',
+        custom_id: 'bug-title',
+        placeholder: 'Brief description of the issue',
+        max_length: 100,
+      }],
+    },
+    {
+      type: 1,
+      components: [{
+        type: 4,
+        style: 2,
+        label: 'Steps to Reproduce',
+        custom_id: 'steps',
+        placeholder: '1. Go to...\n2. Click on...\n3. See error',
+        min_length: 20,
+      }],
+    },
+    {
+      type: 1,
+      components: [{
+        type: 4,
+        style: 2,
+        label: 'Expected vs Actual Behavior',
+        custom_id: 'behavior',
+        placeholder: 'What did you expect? What actually happened?',
+      }],
+    },
+  ],
+}
+```
+</Accordion>
+
+<Accordion title="Content Submission">
+```javascript
+{
+  title: 'Submit Your Content',
+  custom_id: 'content-modal',
+  components: [
+    {
+      type: 1,
+      components: [{
+        type: 4,
+        style: 1,
+        label: 'Title',
+        custom_id: 'content-title',
+        max_length: 100,
+      }],
+    },
+    {
+      type: 1,
+      components: [{
+        type: 4,
+        style: 2,
+        label: 'Content',
+        custom_id: 'content-body',
+        placeholder: 'Write your content here...',
+        min_length: 1,
+        max_length: 4000,
+      }],
+    },
+    {
+      type: 1,
+      components: [{
+        type: 4,
+        style: 1,
+        label: 'Tags (comma-separated)',
+        custom_id: 'tags',
+        placeholder: 'tag1, tag2, tag3',
+        required: false,
+      }],
+    },
+  ],
+}
+```
+</Accordion>
+
+## Important Limitations
+
+<Warning>
+Modals have several Discord-imposed limitations:
+- Maximum of 5 action rows (5 text inputs)
+- Text input `max_length` cannot exceed 4000 characters
+- Modal `title` cannot exceed 45 characters
+- Input `label` cannot exceed 45 characters
+- `custom_id` cannot exceed 100 characters
+- Modals must be sent as an immediate response (cannot be sent to a deferred interaction)
+</Warning>
+
+## Validation
+
+Implement validation in your submission handler:
+
+```javascript
+if (interaction.type === InteractionType.MODAL_SUBMIT) {
+	const email = getModalValue(interaction.data.components, 'email');
+	
+	// Validate email format
+	const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+	if (!emailRegex.test(email)) {
+		return res.send({
+			type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+			data: {
+				content: 'Invalid email format. Please try again.',
+				flags: 64, // EPHEMERAL flag
+			},
+		});
+	}
+	
+	// Process valid input...
+}
+```
+
+## Best Practices
+
+<Accordion title="User Experience">
+- Use clear, concise labels that explain what input is expected
+- Provide helpful placeholder text as examples
+- Mark truly optional fields with `required: false`
+- Use appropriate min/max lengths to guide users
+- Consider the user's context when choosing short vs paragraph style
+</Accordion>
+
+<Accordion title="Data Handling">
+- Always validate user input before processing
+- Sanitize input to prevent injection attacks
+- Store modal submissions securely
+- Consider rate limiting to prevent spam
+- Provide clear feedback on successful submission
+</Accordion>
+
+<Accordion title="Error Handling">
+- Handle cases where users cancel the modal
+- Validate required fields are present
+- Provide helpful error messages
+- Use ephemeral messages for error feedback
+- Log errors for debugging
+</Accordion>
+
+## Next Steps
+
+- Learn about [message components](/examples/message-components) for buttons and select menus
+- Explore [Express.js setup](/examples/express-app) for the complete server
+- Check out [deferred responses](/advanced/deferred-responses) for long-running operations
+- Read about [interaction types](/interactions/types) to understand the full interaction lifecycle

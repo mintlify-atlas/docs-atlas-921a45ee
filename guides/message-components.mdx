@@ -1,0 +1,629 @@
+---
+title: 'Message Components'
+description: 'Add interactive buttons, select menus, and other components to your Discord messages'
+---
+
+## Overview
+
+Message components are interactive elements you can add to Discord messages. This library provides TypeScript types and enums for all Discord message components, making it easy to create rich, interactive experiences.
+
+## Component Types
+
+The `MessageComponentTypes` enum includes all available component types:
+
+```typescript
+enum MessageComponentTypes {
+  ACTION_ROW = 1,        // Container for other components
+  BUTTON = 2,            // Clickable button
+  STRING_SELECT = 3,     // Text-based select menu
+  INPUT_TEXT = 4,        // Text input field (for modals)
+  USER_SELECT = 5,       // User picker
+  ROLE_SELECT = 6,       // Role picker
+  MENTIONABLE_SELECT = 7,// User or role picker
+  CHANNEL_SELECT = 8,    // Channel picker
+  SECTION = 9,           // Content section
+  TEXT_DISPLAY = 10,     // Text display
+  THUMBNAIL = 11,        // Image thumbnail
+  MEDIA_GALLERY = 12,    // Media gallery
+  FILE = 13,             // File attachment
+  SEPARATOR = 14,        // Visual separator
+  CONTAINER = 17,        // Container component
+  LABEL = 18,            // Label component
+}
+```
+
+## Action Rows
+
+Action Rows are required containers for interactive components. Most messages can have up to 5 action rows.
+
+```javascript
+import { MessageComponentTypes } from 'discord-interactions';
+
+{
+  type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+  data: {
+    content: 'Choose an option:',
+    components: [
+      {
+        type: MessageComponentTypes.ACTION_ROW,
+        components: [
+          // Buttons, select menus, etc.
+        ],
+      },
+    ],
+  },
+}
+```
+
+## Buttons
+
+Buttons are clickable components that trigger interactions. There are several button styles available.
+
+### Button Styles
+
+```typescript
+enum ButtonStyleTypes {
+  PRIMARY = 1,    // Blurple button
+  SECONDARY = 2,  // Grey button
+  SUCCESS = 3,    // Green button
+  DANGER = 4,     // Red button
+  LINK = 5,       // Grey button with link
+  PREMIUM = 6,    // Premium/SKU button
+}
+```
+
+### Basic Button Example
+
+```javascript
+import { 
+  InteractionResponseType, 
+  MessageComponentTypes, 
+  ButtonStyleTypes 
+} from 'discord-interactions';
+
+// Send a message with buttons
+res.send({
+  type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+  data: {
+    content: 'Click a button!',
+    components: [
+      {
+        type: MessageComponentTypes.ACTION_ROW,
+        components: [
+          {
+            type: MessageComponentTypes.BUTTON,
+            style: ButtonStyleTypes.PRIMARY,
+            label: 'Primary',
+            custom_id: 'primary_button',
+          },
+          {
+            type: MessageComponentTypes.BUTTON,
+            style: ButtonStyleTypes.SUCCESS,
+            label: 'Success',
+            custom_id: 'success_button',
+          },
+          {
+            type: MessageComponentTypes.BUTTON,
+            style: ButtonStyleTypes.DANGER,
+            label: 'Danger',
+            custom_id: 'danger_button',
+          },
+        ],
+      },
+    ],
+  },
+});
+```
+
+### Link Buttons
+
+Link buttons don't trigger interactions - they open URLs:
+
+```javascript
+{
+  type: MessageComponentTypes.BUTTON,
+  style: ButtonStyleTypes.LINK,
+  label: 'Visit Discord',
+  url: 'https://discord.com',
+}
+```
+
+### Premium Buttons
+
+Premium buttons are used for SKU purchases:
+
+```javascript
+{
+  type: MessageComponentTypes.BUTTON,
+  style: ButtonStyleTypes.PREMIUM,
+  sku_id: 'your_sku_id_here',
+}
+```
+
+### Buttons with Emojis
+
+Add emojis to buttons for visual appeal:
+
+```javascript
+{
+  type: MessageComponentTypes.BUTTON,
+  style: ButtonStyleTypes.PRIMARY,
+  label: 'React',
+  custom_id: 'react_button',
+  emoji: {
+    name: '👍',
+  },
+}
+
+// Or use custom emoji
+{
+  type: MessageComponentTypes.BUTTON,
+  style: ButtonStyleTypes.PRIMARY,
+  label: 'Custom',
+  custom_id: 'custom_button',
+  emoji: {
+    name: 'custom_emoji',
+    id: '123456789012345678',
+    animated: false,
+  },
+}
+```
+
+### Disabled Buttons
+
+```javascript
+{
+  type: MessageComponentTypes.BUTTON,
+  style: ButtonStyleTypes.SECONDARY,
+  label: 'Disabled',
+  custom_id: 'disabled_button',
+  disabled: true,
+}
+```
+
+## Handling Button Interactions
+
+When a user clicks a button, Discord sends a `MESSAGE_COMPONENT` interaction:
+
+```javascript
+import { InteractionType, InteractionResponseType } from 'discord-interactions';
+
+if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
+  const customId = interaction.data.custom_id;
+  
+  if (customId === 'primary_button') {
+    res.send({
+      type: InteractionResponseType.UPDATE_MESSAGE,
+      data: {
+        content: 'You clicked the primary button!',
+        components: [], // Remove buttons
+      },
+    });
+  }
+}
+```
+
+## Select Menus
+
+Select menus let users choose from a list of options.
+
+### String Select Menu
+
+Text-based select menu with custom options:
+
+```javascript
+{
+  type: MessageComponentTypes.ACTION_ROW,
+  components: [
+    {
+      type: MessageComponentTypes.STRING_SELECT,
+      custom_id: 'color_select',
+      placeholder: 'Choose a color',
+      min_values: 1,
+      max_values: 1,
+      options: [
+        {
+          label: 'Red',
+          value: 'red',
+          description: 'A nice red color',
+          emoji: { name: '🔴' },
+        },
+        {
+          label: 'Blue',
+          value: 'blue',
+          description: 'A cool blue color',
+          emoji: { name: '🔵' },
+        },
+        {
+          label: 'Green',
+          value: 'green',
+          description: 'A fresh green color',
+          emoji: { name: '🟢' },
+        },
+      ],
+    },
+  ],
+}
+```
+
+### User Select Menu
+
+Let users select Discord users:
+
+```javascript
+{
+  type: MessageComponentTypes.ACTION_ROW,
+  components: [
+    {
+      type: MessageComponentTypes.USER_SELECT,
+      custom_id: 'user_select',
+      placeholder: 'Select a user',
+      min_values: 1,
+      max_values: 5,
+    },
+  ],
+}
+```
+
+### Role Select Menu
+
+Let users select Discord roles:
+
+```javascript
+{
+  type: MessageComponentTypes.ACTION_ROW,
+  components: [
+    {
+      type: MessageComponentTypes.ROLE_SELECT,
+      custom_id: 'role_select',
+      placeholder: 'Select a role',
+      min_values: 1,
+      max_values: 3,
+    },
+  ],
+}
+```
+
+### Mentionable Select Menu
+
+Let users select both users and roles:
+
+```javascript
+{
+  type: MessageComponentTypes.ACTION_ROW,
+  components: [
+    {
+      type: MessageComponentTypes.MENTIONABLE_SELECT,
+      custom_id: 'mentionable_select',
+      placeholder: 'Select users or roles',
+      min_values: 1,
+      max_values: 10,
+    },
+  ],
+}
+```
+
+### Channel Select Menu
+
+Let users select channels, optionally filtered by type:
+
+```javascript
+import { MessageComponentTypes, ChannelTypes } from 'discord-interactions';
+
+{
+  type: MessageComponentTypes.ACTION_ROW,
+  components: [
+    {
+      type: MessageComponentTypes.CHANNEL_SELECT,
+      custom_id: 'channel_select',
+      placeholder: 'Select a text channel',
+      channel_types: [
+        ChannelTypes.GUILD_TEXT,
+        ChannelTypes.GUILD_ANNOUNCEMENT,
+      ],
+    },
+  ],
+}
+```
+
+### Available Channel Types
+
+```typescript
+enum ChannelTypes {
+  GUILD_TEXT = 0,
+  DM = 1,
+  GUILD_VOICE = 2,
+  GROUP_DM = 3,
+  GUILD_CATEGORY = 4,
+  GUILD_ANNOUNCEMENT = 5,
+  GUILD_STORE = 6,
+  ANNOUNCEMENT_THREAD = 10,
+  PUBLIC_THREAD = 11,
+  PRIVATE_THREAD = 12,
+  GUILD_STAGE_VOICE = 13,
+  GUILD_DIRECTORY = 14,
+  GUILD_FORUM = 15,
+  GUILD_MEDIA = 16,
+}
+```
+
+## Handling Select Menu Interactions
+
+Process select menu selections:
+
+```javascript
+if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
+  const customId = interaction.data.custom_id;
+  
+  if (customId === 'color_select') {
+    const selectedValue = interaction.data.values[0];
+    
+    res.send({
+      type: InteractionResponseType.UPDATE_MESSAGE,
+      data: {
+        content: `You selected: ${selectedValue}`,
+      },
+    });
+  }
+  
+  if (customId === 'user_select') {
+    const selectedUsers = interaction.data.values; // Array of user IDs
+    
+    res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `Selected ${selectedUsers.length} user(s)`,
+      },
+    });
+  }
+}
+```
+
+## Text Input (Modals)
+
+Text inputs are used in modals for collecting user input:
+
+```typescript
+enum TextStyleTypes {
+  SHORT = 1,      // Single-line input
+  PARAGRAPH = 2,  // Multi-line input
+}
+```
+
+```javascript
+// Respond with a modal containing text inputs
+res.send({
+  type: InteractionResponseType.MODAL,
+  data: {
+    custom_id: 'feedback_modal',
+    title: 'Feedback Form',
+    components: [
+      {
+        type: MessageComponentTypes.ACTION_ROW,
+        components: [
+          {
+            type: MessageComponentTypes.INPUT_TEXT,
+            custom_id: 'name_input',
+            label: 'Your Name',
+            style: TextStyleTypes.SHORT,
+            placeholder: 'Enter your name',
+            required: true,
+            min_length: 2,
+            max_length: 50,
+          },
+        ],
+      },
+      {
+        type: MessageComponentTypes.ACTION_ROW,
+        components: [
+          {
+            type: MessageComponentTypes.INPUT_TEXT,
+            custom_id: 'feedback_input',
+            label: 'Your Feedback',
+            style: TextStyleTypes.PARAGRAPH,
+            placeholder: 'Tell us what you think...',
+            required: true,
+            min_length: 10,
+            max_length: 1000,
+          },
+        ],
+      },
+    ],
+  },
+});
+```
+
+### Handling Modal Submissions
+
+```javascript
+if (interaction.type === InteractionType.MODAL_SUBMIT) {
+  const components = interaction.data.components;
+  
+  // Extract values
+  const name = components[0].components[0].value;
+  const feedback = components[1].components[0].value;
+  
+  res.send({
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: {
+      content: `Thanks for your feedback, ${name}!`,
+      flags: InteractionResponseFlags.EPHEMERAL,
+    },
+  });
+}
+```
+
+## Advanced Components
+
+### Container
+
+Containers hold other components with optional styling:
+
+```javascript
+{
+  type: MessageComponentTypes.CONTAINER,
+  components: [
+    // Other components
+  ],
+  accent_color: 0x5865F2, // Blurple color
+  spoiler: false,
+}
+```
+
+### Separator
+
+Add visual separation between content:
+
+```javascript
+import { MessageComponentTypes, SeparatorSpacingTypes } from 'discord-interactions';
+
+{
+  type: MessageComponentTypes.SEPARATOR,
+  divider: true,
+  spacing: SeparatorSpacingTypes.LARGE,
+}
+```
+
+### Section
+
+Sections display content with an optional accessory:
+
+```javascript
+{
+  type: MessageComponentTypes.SECTION,
+  components: [
+    {
+      type: MessageComponentTypes.TEXT_DISPLAY,
+      content: 'This is a section with text',
+    },
+  ],
+  accessory: {
+    type: MessageComponentTypes.BUTTON,
+    style: ButtonStyleTypes.PRIMARY,
+    label: 'Action',
+    custom_id: 'section_button',
+  },
+}
+```
+
+## Complete Example
+
+Here's a comprehensive example combining multiple component types:
+
+```javascript
+import { 
+  InteractionType,
+  InteractionResponseType,
+  MessageComponentTypes,
+  ButtonStyleTypes,
+  TextStyleTypes,
+} from 'discord-interactions';
+
+app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), (req, res) => {
+  const interaction = req.body;
+  
+  if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+    if (interaction.data.name === 'survey') {
+      res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: 'Take our survey!',
+          components: [
+            // Select menu
+            {
+              type: MessageComponentTypes.ACTION_ROW,
+              components: [
+                {
+                  type: MessageComponentTypes.STRING_SELECT,
+                  custom_id: 'experience_select',
+                  placeholder: 'How was your experience?',
+                  options: [
+                    { label: 'Excellent', value: 'excellent', emoji: { name: '🌟' } },
+                    { label: 'Good', value: 'good', emoji: { name: '👍' } },
+                    { label: 'Okay', value: 'okay', emoji: { name: '😐' } },
+                    { label: 'Poor', value: 'poor', emoji: { name: '👎' } },
+                  ],
+                },
+              ],
+            },
+            // Buttons
+            {
+              type: MessageComponentTypes.ACTION_ROW,
+              components: [
+                {
+                  type: MessageComponentTypes.BUTTON,
+                  style: ButtonStyleTypes.PRIMARY,
+                  label: 'Detailed Feedback',
+                  custom_id: 'detailed_feedback',
+                },
+                {
+                  type: MessageComponentTypes.BUTTON,
+                  style: ButtonStyleTypes.SECONDARY,
+                  label: 'Cancel',
+                  custom_id: 'cancel_survey',
+                },
+              ],
+            },
+          ],
+        },
+      });
+    }
+  }
+  
+  if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
+    if (interaction.data.custom_id === 'detailed_feedback') {
+      // Open modal for detailed feedback
+      res.send({
+        type: InteractionResponseType.MODAL,
+        data: {
+          custom_id: 'feedback_modal',
+          title: 'Detailed Feedback',
+          components: [
+            {
+              type: MessageComponentTypes.ACTION_ROW,
+              components: [
+                {
+                  type: MessageComponentTypes.INPUT_TEXT,
+                  custom_id: 'comments',
+                  label: 'Additional Comments',
+                  style: TextStyleTypes.PARAGRAPH,
+                  required: true,
+                },
+              ],
+            },
+          ],
+        },
+      });
+    }
+  }
+});
+```
+
+## Best Practices
+
+<Note>
+  - Action Rows can contain up to 5 buttons or 1 select menu
+  - Messages can have up to 5 Action Rows
+  - Use descriptive `custom_id` values to identify component interactions
+  - Always handle component interactions with appropriate response types
+</Note>
+
+<Warning>
+  Use `UPDATE_MESSAGE` when responding to button/select menu interactions to avoid creating duplicate messages.
+</Warning>
+
+<Info>
+  Set `required: false` on text inputs to make them optional in modals.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Interactions" icon="bolt" href="/guides/interactions">
+    Learn more about handling interactions
+  </Card>
+  
+  <Card title="Express Integration" icon="server" href="/guides/express-integration">
+    Build a complete Express server with components
+  </Card>
+</CardGroup>

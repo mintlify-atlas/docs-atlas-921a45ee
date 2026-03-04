@@ -1,0 +1,283 @@
+---
+title: 'Handling Discord Interactions'
+description: 'Learn how to handle Discord interactions including slash commands, components, and modals'
+---
+
+## Overview
+
+Discord Interactions are HTTP requests sent to your application when users interact with your app. This guide covers how to handle different types of interactions using the discord-interactions-js library.
+
+## Interaction Types
+
+The library provides an `InteractionType` enum to identify the type of interaction received:
+
+```typescript
+enum InteractionType {
+  PING = 1,                              // A ping from Discord
+  APPLICATION_COMMAND = 2,               // A slash command invocation
+  MESSAGE_COMPONENT = 3,                 // Usage of a message component
+  APPLICATION_COMMAND_AUTOCOMPLETE = 4,  // Autocomplete interaction
+  MODAL_SUBMIT = 5,                      // Modal submission
+}
+```
+
+## Response Types
+
+When responding to interactions, use the `InteractionResponseType` enum:
+
+```typescript
+enum InteractionResponseType {
+  PONG = 1,                                    // Acknowledge a PING
+  CHANNEL_MESSAGE_WITH_SOURCE = 4,             // Respond with a message
+  DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE = 5,    // Acknowledge and send later
+  DEFERRED_UPDATE_MESSAGE = 6,                 // Acknowledge component interaction
+  UPDATE_MESSAGE = 7,                          // Edit the component's message
+  APPLICATION_COMMAND_AUTOCOMPLETE_RESULT = 8, // Autocomplete results
+  MODAL = 9,                                   // Respond with a modal
+  PREMIUM_REQUIRED = 10,                       // Show upgrade prompt
+  LAUNCH_ACTIVITY = 12,                        // Launch an Activity
+}
+```
+
+## Basic Interaction Handling
+
+<Steps>
+  <Step title="Set up your endpoint">
+    Create an endpoint that receives POST requests from Discord:
+
+    ```javascript
+    import express from 'express';
+    import { verifyKeyMiddleware, InteractionType, InteractionResponseType } from 'discord-interactions';
+
+    const app = express();
+
+    app.post('/interactions', 
+      verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+      (req, res) => {
+        // Handle interaction
+      }
+    );
+    ```
+  </Step>
+
+  <Step title="Handle different interaction types">
+    Use a switch statement or conditionals to handle different interaction types:
+
+    ```javascript
+    app.post('/interactions', 
+      verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+      (req, res) => {
+        const interaction = req.body;
+
+        switch (interaction.type) {
+          case InteractionType.PING:
+            // Handled automatically by middleware
+            break;
+
+          case InteractionType.APPLICATION_COMMAND:
+            res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                content: 'Hello world',
+              },
+            });
+            break;
+
+          case InteractionType.MESSAGE_COMPONENT:
+            res.send({
+              type: InteractionResponseType.UPDATE_MESSAGE,
+              data: {
+                content: 'Button clicked!',
+              },
+            });
+            break;
+
+          case InteractionType.MODAL_SUBMIT:
+            res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                content: 'Modal submitted!',
+              },
+            });
+            break;
+        }
+      }
+    );
+    ```
+  </Step>
+</Steps>
+
+## Handling Slash Commands
+
+When a user invokes a slash command, Discord sends an `APPLICATION_COMMAND` interaction:
+
+```javascript
+if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+  const commandName = interaction.data.name;
+
+  if (commandName === 'hello') {
+    res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `Hello, ${interaction.member.user.username}!`,
+      },
+    });
+  }
+}
+```
+
+## Deferred Responses
+
+For operations that take longer than 3 seconds, use deferred responses:
+
+```javascript
+if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+  // Send deferred response immediately
+  res.send({
+    type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+  });
+
+  // Then follow up with actual response using Discord API
+  // You have up to 15 minutes to send the follow-up
+  await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${interaction.token}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      content: 'Here is your data after processing!',
+    }),
+  });
+}
+```
+
+## Response Flags
+
+Use `InteractionResponseFlags` to modify message behavior:
+
+```typescript
+enum InteractionResponseFlags {
+  EPHEMERAL = 1 << 6,        // Message only visible to user
+  IS_COMPONENTS_V2 = 1 << 15, // Enable Components v2
+}
+```
+
+### Ephemeral Messages
+
+Send messages visible only to the user who triggered the interaction:
+
+```javascript
+res.send({
+  type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+  data: {
+    content: 'Only you can see this!',
+    flags: InteractionResponseFlags.EPHEMERAL,
+  },
+});
+```
+
+## Autocomplete Interactions
+
+Handle autocomplete for slash command options:
+
+```javascript
+if (interaction.type === InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) {
+  const focusedOption = interaction.data.options.find(opt => opt.focused);
+  
+  res.send({
+    type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+    data: {
+      choices: [
+        { name: 'Option 1', value: 'option1' },
+        { name: 'Option 2', value: 'option2' },
+        { name: 'Option 3', value: 'option3' },
+      ],
+    },
+  });
+}
+```
+
+## Modal Responses
+
+Respond to an interaction with a modal dialog:
+
+```javascript
+if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+  res.send({
+    type: InteractionResponseType.MODAL,
+    data: {
+      custom_id: 'my_modal',
+      title: 'My Modal',
+      components: [
+        {
+          type: MessageComponentTypes.ACTION_ROW,
+          components: [
+            {
+              type: MessageComponentTypes.INPUT_TEXT,
+              custom_id: 'name_input',
+              label: 'What is your name?',
+              style: TextStyleTypes.SHORT,
+              required: true,
+            },
+          ],
+        },
+      ],
+    },
+  });
+}
+```
+
+## Best Practices
+
+<Note>
+  Always respond to interactions within 3 seconds. Use deferred responses for longer operations.
+</Note>
+
+<Warning>
+  The `verifyKeyMiddleware` must be used before any body-parsing middleware, as it needs access to the raw request body for signature verification.
+</Warning>
+
+<Info>
+  Interaction tokens are valid for 15 minutes, giving you time to send follow-up messages after a deferred response.
+</Info>
+
+## Common Patterns
+
+### Command Router
+
+Create a clean command structure:
+
+```javascript
+const commands = {
+  hello: (interaction) => ({
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: { content: 'Hello!' },
+  }),
+  
+  ping: (interaction) => ({
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: { content: 'Pong!' },
+  }),
+};
+
+app.post('/interactions', verifyKeyMiddleware(PUBLIC_KEY), (req, res) => {
+  const interaction = req.body;
+  
+  if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+    const handler = commands[interaction.data.name];
+    if (handler) {
+      res.send(handler(interaction));
+    }
+  }
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Message Components" icon="grid" href="/guides/message-components">
+    Learn how to add buttons and select menus to your messages
+  </Card>
+  
+  <Card title="Webhook Events" icon="webhook" href="/guides/webhook-events">
+    Handle real-time events from Discord
+  </Card>
+</CardGroup>

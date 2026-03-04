@@ -1,0 +1,704 @@
+---
+title: Component Types
+description: TypeScript type definitions for all Discord message components
+---
+
+## Overview
+
+Discord message components are interactive elements that can be added to messages. This page documents all available component type definitions.
+
+## MessageComponent Union Type
+
+```typescript
+type MessageComponent =
+  | ActionRow
+  | Button
+  | StringSelect
+  | UserSelect
+  | RoleSelect
+  | MentionableSelect
+  | ChannelSelect
+  | TextInput
+  | Section
+  | TextDisplay
+  | Thumbnail
+  | MediaGallery
+  | FileComponent
+  | Separator
+  | Container
+  | Label;
+```
+
+---
+
+## Interactive Components
+
+### Button
+
+Interactive button component that users can click.
+
+```typescript
+type Button = CustomButton | LinkButton | PremiumButton;
+
+interface CustomButton extends LabeledButton {
+  custom_id: string;
+  style:
+    | ButtonStyleTypes.PRIMARY
+    | ButtonStyleTypes.SECONDARY
+    | ButtonStyleTypes.SUCCESS
+    | ButtonStyleTypes.DANGER;
+}
+
+interface LinkButton extends LabeledButton {
+  url: string;
+  style: ButtonStyleTypes.LINK;
+}
+
+interface PremiumButton extends BaseButton {
+  sku_id: string;
+  style: ButtonStyleTypes.PREMIUM;
+}
+
+interface LabeledButton extends BaseButton {
+  emoji?: Pick<EmojiInfo, 'id' | 'name' | 'animated'>;
+  label: string;
+}
+
+interface BaseButton extends BaseComponent {
+  disabled?: boolean;
+  type: MessageComponentTypes.BUTTON;
+}
+```
+
+**Example:**
+
+```typescript
+const button: Button = {
+  type: MessageComponentTypes.BUTTON,
+  style: ButtonStyleTypes.PRIMARY,
+  label: 'Click me',
+  custom_id: 'my_button',
+  disabled: false,
+};
+```
+
+**Reference:** [Discord Button Documentation](https://discord.com/developers/docs/components/reference#button)
+
+---
+
+### ActionRow
+
+Container component for organizing interactive components.
+
+```typescript
+type ActionRow = BaseComponent & {
+  type: MessageComponentTypes.ACTION_ROW;
+  components: Array<
+    | Button
+    | StringSelect
+    | UserSelect
+    | RoleSelect
+    | MentionableSelect
+    | ChannelSelect
+    | TextInput
+  >;
+};
+```
+
+**Example:**
+
+```typescript
+const actionRow: ActionRow = {
+  type: MessageComponentTypes.ACTION_ROW,
+  components: [
+    {
+      type: MessageComponentTypes.BUTTON,
+      style: ButtonStyleTypes.PRIMARY,
+      label: 'Button 1',
+      custom_id: 'button_1',
+    },
+    {
+      type: MessageComponentTypes.BUTTON,
+      style: ButtonStyleTypes.SECONDARY,
+      label: 'Button 2',
+      custom_id: 'button_2',
+    },
+  ],
+};
+```
+
+**Reference:** [Discord Action Row Documentation](https://discord.com/developers/docs/components/reference#action-row)
+
+---
+
+## Select Menus
+
+### StringSelect
+
+Dropdown menu for selecting from predefined text options.
+
+```typescript
+type StringSelect = SelectMenu<MessageComponentTypes.STRING_SELECT> & {
+  options: StringSelectOption[];
+};
+
+type StringSelectOption = {
+  label: string;
+  value: string;
+  description?: string;
+  emoji?: Pick<EmojiInfo, 'id' | 'name' | 'animated'>;
+  default?: boolean;
+};
+
+type SelectMenu<T extends SelectComponentType> = BaseComponent & {
+  type: T;
+  custom_id: string;
+  placeholder?: string;
+  min_values?: number;
+  max_values?: number;
+  disabled?: boolean;
+  required?: boolean;
+};
+```
+
+**Example:**
+
+```typescript
+const stringSelect: StringSelect = {
+  type: MessageComponentTypes.STRING_SELECT,
+  custom_id: 'color_select',
+  placeholder: 'Choose a color',
+  min_values: 1,
+  max_values: 1,
+  options: [
+    {
+      label: 'Red',
+      value: 'red',
+      description: 'The color red',
+      emoji: { name: '🔴' },
+    },
+    {
+      label: 'Blue',
+      value: 'blue',
+      description: 'The color blue',
+      emoji: { name: '🔵' },
+    },
+  ],
+};
+```
+
+**Reference:** [Discord String Select Documentation](https://discord.com/developers/docs/components/reference#string-select)
+
+---
+
+### UserSelect
+
+Dropdown menu for selecting Discord users.
+
+```typescript
+type UserSelect = SelectMenu<MessageComponentTypes.USER_SELECT>;
+```
+
+**Example:**
+
+```typescript
+const userSelect: UserSelect = {
+  type: MessageComponentTypes.USER_SELECT,
+  custom_id: 'user_select',
+  placeholder: 'Select a user',
+  min_values: 1,
+  max_values: 3,
+};
+```
+
+**Reference:** [Discord User Select Documentation](https://discord.com/developers/docs/components/reference#user-select)
+
+---
+
+### RoleSelect
+
+Dropdown menu for selecting Discord roles.
+
+```typescript
+type RoleSelect = SelectMenu<MessageComponentTypes.ROLE_SELECT>;
+```
+
+**Example:**
+
+```typescript
+const roleSelect: RoleSelect = {
+  type: MessageComponentTypes.ROLE_SELECT,
+  custom_id: 'role_select',
+  placeholder: 'Select a role',
+  min_values: 1,
+  max_values: 5,
+};
+```
+
+**Reference:** [Discord Role Select Documentation](https://discord.com/developers/docs/components/reference#role-select)
+
+---
+
+### MentionableSelect
+
+Dropdown menu for selecting users or roles.
+
+```typescript
+type MentionableSelect = SelectMenu<MessageComponentTypes.MENTIONABLE_SELECT>;
+```
+
+**Example:**
+
+```typescript
+const mentionableSelect: MentionableSelect = {
+  type: MessageComponentTypes.MENTIONABLE_SELECT,
+  custom_id: 'mentionable_select',
+  placeholder: 'Select a user or role',
+  min_values: 1,
+  max_values: 10,
+};
+```
+
+**Reference:** [Discord Mentionable Select Documentation](https://discord.com/developers/docs/components/reference#mentionable-select)
+
+---
+
+### ChannelSelect
+
+Dropdown menu for selecting Discord channels.
+
+```typescript
+type ChannelSelect = SelectMenu<MessageComponentTypes.CHANNEL_SELECT> & {
+  channel_types?: ChannelTypes[];
+};
+
+enum ChannelTypes {
+  GUILD_TEXT = 0,
+  DM = 1,
+  GUILD_VOICE = 2,
+  GROUP_DM = 3,
+  GUILD_CATEGORY = 4,
+  GUILD_ANNOUNCEMENT = 5,
+  GUILD_STORE = 6,
+  ANNOUNCEMENT_THREAD = 10,
+  PUBLIC_THREAD = 11,
+  PRIVATE_THREAD = 12,
+  GUILD_STAGE_VOICE = 13,
+  GUILD_DIRECTORY = 14,
+  GUILD_FORUM = 15,
+  GUILD_MEDIA = 16,
+}
+```
+
+**Example:**
+
+```typescript
+const channelSelect: ChannelSelect = {
+  type: MessageComponentTypes.CHANNEL_SELECT,
+  custom_id: 'channel_select',
+  placeholder: 'Select a text channel',
+  channel_types: [ChannelTypes.GUILD_TEXT, ChannelTypes.GUILD_ANNOUNCEMENT],
+  min_values: 1,
+  max_values: 1,
+};
+```
+
+**Reference:** [Discord Channel Select Documentation](https://discord.com/developers/docs/components/reference#channel-select)
+
+---
+
+## Text Input
+
+### TextInput
+
+Text input field for user-entered text (used in modals).
+
+```typescript
+type TextInput = {
+  type: MessageComponentTypes.INPUT_TEXT;
+  custom_id: string;
+  style: TextStyleTypes.SHORT | TextStyleTypes.PARAGRAPH;
+  label?: string;
+  min_length?: number;
+  max_length?: number;
+  required?: boolean;
+  value?: string;
+  placeholder?: string;
+};
+```
+
+**Example:**
+
+```typescript
+const textInput: TextInput = {
+  type: MessageComponentTypes.INPUT_TEXT,
+  custom_id: 'feedback_input',
+  style: TextStyleTypes.PARAGRAPH,
+  label: 'Your Feedback',
+  placeholder: 'Tell us what you think...',
+  min_length: 10,
+  max_length: 1000,
+  required: true,
+};
+```
+
+**Reference:** [Discord Text Input Documentation](https://discord.com/developers/docs/components/reference#text-input)
+
+---
+
+## Display Components
+
+### Section
+
+Section component for grouping related content with an optional accessory.
+
+```typescript
+interface Section extends BaseComponent {
+  type: MessageComponentTypes.SECTION;
+  components: TextDisplay[] & { length: 1 | 2 | 3 };
+  accessory: Thumbnail | Button;
+}
+```
+
+**Example:**
+
+```typescript
+const section: Section = {
+  type: MessageComponentTypes.SECTION,
+  components: [
+    {
+      type: MessageComponentTypes.TEXT_DISPLAY,
+      content: 'This is a section with text',
+    },
+  ],
+  accessory: {
+    type: MessageComponentTypes.THUMBNAIL,
+    media: {
+      url: 'https://example.com/image.png',
+    },
+  },
+};
+```
+
+**Reference:** [Discord Section Documentation](https://discord.com/developers/docs/components/reference#section)
+
+---
+
+### TextDisplay
+
+Component for displaying text content.
+
+```typescript
+interface TextDisplay extends BaseComponent {
+  type: MessageComponentTypes.TEXT_DISPLAY;
+  content: string;
+}
+```
+
+**Example:**
+
+```typescript
+const textDisplay: TextDisplay = {
+  type: MessageComponentTypes.TEXT_DISPLAY,
+  content: 'This is some display text',
+};
+```
+
+**Reference:** [Discord Text Display Documentation](https://discord.com/developers/docs/components/reference#text-display)
+
+---
+
+### Thumbnail
+
+Component for displaying thumbnail images.
+
+```typescript
+interface Thumbnail extends BaseComponent {
+  type: MessageComponentTypes.THUMBNAIL;
+  media: UnfurledMediaItem;
+  description?: string;
+  spoiler?: boolean;
+}
+
+interface UnfurledMediaItem {
+  url: string;
+  proxy_url?: string;
+  height?: number | null;
+  width?: number | null;
+  content_type?: string;
+}
+```
+
+**Example:**
+
+```typescript
+const thumbnail: Thumbnail = {
+  type: MessageComponentTypes.THUMBNAIL,
+  media: {
+    url: 'https://example.com/thumbnail.jpg',
+    height: 200,
+    width: 200,
+  },
+  description: 'A thumbnail image',
+  spoiler: false,
+};
+```
+
+**Reference:** [Discord Thumbnail Documentation](https://discord.com/developers/docs/components/reference#thumbnail)
+
+---
+
+### MediaGallery
+
+Component for displaying multiple media items in a gallery format.
+
+```typescript
+interface MediaGallery extends BaseComponent {
+  type: MessageComponentTypes.MEDIA_GALLERY;
+  items: Array<MediaGalleryItem>;
+}
+
+interface MediaGalleryItem {
+  media: UnfurledMediaItem;
+  description?: string;
+  spoiler?: boolean;
+}
+```
+
+**Example:**
+
+```typescript
+const mediaGallery: MediaGallery = {
+  type: MessageComponentTypes.MEDIA_GALLERY,
+  items: [
+    {
+      media: {
+        url: 'https://example.com/image1.jpg',
+      },
+      description: 'First image',
+    },
+    {
+      media: {
+        url: 'https://example.com/image2.jpg',
+      },
+      description: 'Second image',
+    },
+  ],
+};
+```
+
+**Reference:** [Discord Media Gallery Documentation](https://discord.com/developers/docs/components/reference#media-gallery)
+
+---
+
+### FileComponent
+
+Component for displaying file attachments.
+
+```typescript
+interface FileComponent extends BaseComponent {
+  type: MessageComponentTypes.FILE;
+  file: UnfurledMediaItem;
+  spoiler?: boolean;
+}
+```
+
+**Example:**
+
+```typescript
+const fileComponent: FileComponent = {
+  type: MessageComponentTypes.FILE,
+  file: {
+    url: 'https://example.com/document.pdf',
+    content_type: 'application/pdf',
+  },
+  spoiler: false,
+};
+```
+
+**Reference:** [Discord File Documentation](https://discord.com/developers/docs/components/reference#file)
+
+---
+
+## Layout Components
+
+### Separator
+
+Visual separator component for dividing content.
+
+```typescript
+interface Separator extends BaseComponent {
+  type: MessageComponentTypes.SEPARATOR;
+  divider?: boolean;
+  spacing?: SeparatorSpacingTypes;
+}
+
+enum SeparatorSpacingTypes {
+  SMALL = 1,
+  LARGE = 2,
+}
+```
+
+**Example:**
+
+```typescript
+const separator: Separator = {
+  type: MessageComponentTypes.SEPARATOR,
+  divider: true,
+  spacing: SeparatorSpacingTypes.LARGE,
+};
+```
+
+**Reference:** [Discord Separator Documentation](https://discord.com/developers/docs/components/reference#separator)
+
+---
+
+### Container
+
+Container component for grouping multiple components together.
+
+```typescript
+interface Container extends BaseComponent {
+  type: MessageComponentTypes.CONTAINER;
+  components: Array<MessageComponent>;
+  accent_color?: number | null;
+  spoiler?: boolean;
+}
+```
+
+**Example:**
+
+```typescript
+const container: Container = {
+  type: MessageComponentTypes.CONTAINER,
+  components: [
+    {
+      type: MessageComponentTypes.TEXT_DISPLAY,
+      content: 'Content inside container',
+    },
+  ],
+  accent_color: 0x5865f2,
+  spoiler: false,
+};
+```
+
+**Reference:** [Discord Container Documentation](https://discord.com/developers/docs/components/reference#container)
+
+---
+
+### Label
+
+Label component for adding descriptive text to other components.
+
+```typescript
+interface Label extends BaseComponent {
+  type: MessageComponentTypes.LABEL;
+  label: string;
+  description?: string;
+  component: StringSelect | TextInput;
+}
+```
+
+**Example:**
+
+```typescript
+const label: Label = {
+  type: MessageComponentTypes.LABEL,
+  label: 'Choose an option',
+  description: 'Select from the dropdown below',
+  component: {
+    type: MessageComponentTypes.STRING_SELECT,
+    custom_id: 'labeled_select',
+    options: [
+      { label: 'Option 1', value: 'opt1' },
+      { label: 'Option 2', value: 'opt2' },
+    ],
+  },
+};
+```
+
+**Reference:** [Discord Label Documentation](https://discord.com/developers/docs/components/reference#label)
+
+---
+
+## Base Types
+
+### BaseComponent
+
+Base interface that all components extend.
+
+```typescript
+interface BaseComponent {
+  type: MessageComponentTypes;
+  id?: number;
+}
+```
+
+### EmojiInfo
+
+Type definition for emoji objects used in components.
+
+```typescript
+type EmojiInfo = {
+  name: string | undefined;
+  id: string | undefined;
+  user?: { [key: string]: any };
+  roles?: string[];
+  require_colons?: boolean;
+  managed?: boolean;
+  available?: boolean;
+  animated?: boolean;
+};
+```
+
+---
+
+## Complete Example
+
+Here's a complete example combining multiple components:
+
+```typescript
+import {
+  MessageComponentTypes,
+  ButtonStyleTypes,
+  TextStyleTypes,
+} from 'discord.js';
+
+const message = {
+  content: 'Choose your preferences:',
+  components: [
+    {
+      type: MessageComponentTypes.ACTION_ROW,
+      components: [
+        {
+          type: MessageComponentTypes.STRING_SELECT,
+          custom_id: 'preference_select',
+          placeholder: 'Select your preference',
+          options: [
+            { label: 'Option A', value: 'a', emoji: { name: '🅰️' } },
+            { label: 'Option B', value: 'b', emoji: { name: '🅱️' } },
+            { label: 'Option C', value: 'c', emoji: { name: '©️' } },
+          ],
+        },
+      ],
+    },
+    {
+      type: MessageComponentTypes.ACTION_ROW,
+      components: [
+        {
+          type: MessageComponentTypes.BUTTON,
+          style: ButtonStyleTypes.SUCCESS,
+          label: 'Confirm',
+          custom_id: 'confirm_button',
+        },
+        {
+          type: MessageComponentTypes.BUTTON,
+          style: ButtonStyleTypes.DANGER,
+          label: 'Cancel',
+          custom_id: 'cancel_button',
+        },
+      ],
+    },
+  ],
+};
+```

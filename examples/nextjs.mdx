@@ -1,0 +1,300 @@
+---
+title: "Next.js API Routes"
+description: "Integrate Discord interactions into your Next.js application using API routes"
+---
+
+This example shows how to handle Discord interactions in a Next.js application using API routes. Next.js has a different request/response structure than Express, so this example includes a helper function to adapt the middleware.
+
+## What You'll Learn
+
+- Setting up Discord interactions in Next.js API routes
+- Creating a middleware adapter for Next.js
+- Handling slash commands in a serverless environment
+- Working with Next.js request/response objects
+
+## Prerequisites
+
+<Note>
+Before you begin, make sure you have:
+- A Next.js project (v12 or higher)
+- A Discord application with a public key
+- Your application's public key stored in environment variables
+</Note>
+
+Install the required dependency:
+
+```bash
+npm install discord-interactions
+```
+
+## Complete Example
+
+Create a file at `pages/api/interaction.js`:
+
+```javascript pages/api/interaction.js
+const {
+	InteractionType,
+	InteractionResponseType,
+	verifyKeyMiddleware,
+} = require('discord-interactions');
+
+function runMiddleware(req, res, fn) {
+	return new Promise((resolve, reject) => {
+		req.header = (name) => req.headers[name.toLowerCase()];
+		req.body = JSON.stringify(req.body);
+		fn(req, res, (result) => {
+			if (result instanceof Error) return reject(result);
+			return resolve(result);
+		});
+	});
+}
+
+export default async function handler(req, res) {
+	await runMiddleware(
+		req,
+		res,
+		verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+	);
+
+	const interaction = req.body;
+	if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+		res.send({
+			type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+			data: {
+				content: 'Hello world',
+			},
+		});
+	}
+}
+```
+
+## Key Concepts
+
+### Middleware Adapter
+
+Next.js API routes don't use Express-style middleware out of the box, so we need an adapter:
+
+```javascript
+function runMiddleware(req, res, fn) {
+	return new Promise((resolve, reject) => {
+		req.header = (name) => req.headers[name.toLowerCase()];
+		req.body = JSON.stringify(req.body);
+		fn(req, res, (result) => {
+			if (result instanceof Error) return reject(result);
+			return resolve(result);
+		});
+	});
+}
+```
+
+<Accordion title="Why do we need this adapter?">
+The `verifyKeyMiddleware` from discord-interactions expects Express-style request objects with:
+- A `header()` method to access headers
+- A raw string body for signature verification
+
+Next.js provides headers differently and automatically parses the body as JSON. The adapter:
+1. Adds a `header()` method that reads from `req.headers`
+2. Converts the parsed JSON body back to a string for verification
+3. Wraps the middleware in a Promise for async/await usage
+</Accordion>
+
+### Handler Function
+
+The main handler is an async function that processes the interaction:
+
+```javascript
+export default async function handler(req, res) {
+	// Verify the request signature
+	await runMiddleware(
+		req,
+		res,
+		verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+	);
+
+	// Handle the interaction
+	const interaction = req.body;
+	if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+		res.send({
+			type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+			data: {
+				content: 'Hello world',
+			},
+		});
+	}
+}
+```
+
+## Environment Setup
+
+Create a `.env.local` file in your Next.js project root:
+
+```bash
+CLIENT_PUBLIC_KEY=your_discord_application_public_key_here
+```
+
+<Warning>
+Next.js uses `.env.local` for local environment variables. Never commit this file to version control.
+</Warning>
+
+## API Route Configuration
+
+By default, Next.js parses the request body. You may need to configure body parsing depending on your Next.js version:
+
+```javascript pages/api/interaction.js
+// For Next.js 12+, body parsing is enabled by default
+// If you need to disable it:
+export const config = {
+  api: {
+    bodyParser: true, // Keep this enabled for this example
+  },
+};
+```
+
+## Running Locally
+
+Start your Next.js development server:
+
+```bash
+npm run dev
+```
+
+Your API route will be available at `http://localhost:3000/api/interaction`.
+
+<Info>
+For local development, use a tool like [ngrok](https://ngrok.com/) to expose your local server:
+```bash
+ngrok http 3000
+```
+</Info>
+
+## Configure Discord
+
+In your Discord application settings, set the **Interactions Endpoint URL** to:
+- Development: `https://your-ngrok-url.ngrok.io/api/interaction`
+- Production: `https://your-domain.com/api/interaction`
+
+## Advanced Example
+
+Here's a more complete example with error handling and multiple interaction types:
+
+```javascript pages/api/interaction.js
+const {
+	InteractionType,
+	InteractionResponseType,
+	verifyKeyMiddleware,
+} = require('discord-interactions');
+
+function runMiddleware(req, res, fn) {
+	return new Promise((resolve, reject) => {
+		req.header = (name) => req.headers[name.toLowerCase()];
+		req.body = JSON.stringify(req.body);
+		fn(req, res, (result) => {
+			if (result instanceof Error) return reject(result);
+			return resolve(result);
+		});
+	});
+}
+
+export default async function handler(req, res) {
+	// Only accept POST requests
+	if (req.method !== 'POST') {
+		return res.status(405).json({ error: 'Method not allowed' });
+	}
+
+	try {
+		// Verify the request
+		await runMiddleware(
+			req,
+			res,
+			verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+		);
+
+		const interaction = req.body;
+
+		// Handle different interaction types
+		switch (interaction.type) {
+			case InteractionType.PING:
+				return res.json({ type: InteractionResponseType.PONG });
+
+			case InteractionType.APPLICATION_COMMAND:
+				return res.json({
+					type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+					data: {
+						content: `You used the command: ${interaction.data.name}`,
+					},
+				});
+
+			case InteractionType.MESSAGE_COMPONENT:
+				return res.json({
+					type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+					data: {
+						content: 'Button clicked!',
+					},
+				});
+
+			default:
+				return res.status(400).json({ error: 'Unknown interaction type' });
+		}
+	} catch (error) {
+		console.error('Error handling interaction:', error);
+		return res.status(500).json({ error: 'Internal server error' });
+	}
+}
+```
+
+## Deployment
+
+### Vercel
+
+Next.js API routes work seamlessly on Vercel:
+
+1. Add your environment variables in the Vercel dashboard
+2. Deploy your application
+3. Update your Discord application's interaction URL
+
+```bash
+vercel deploy
+```
+
+### Other Platforms
+
+Next.js API routes are serverless functions that can be deployed to:
+- Vercel (recommended)
+- Netlify
+- AWS Lambda (via serverless-next.js)
+- Any platform that supports Next.js
+
+<Warning>
+Serverless functions typically have a timeout limit (10-30 seconds). If you need longer processing times, use deferred responses:
+
+```javascript
+res.json({
+  type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+});
+```
+
+Then use Discord's webhook to send the final response.
+</Warning>
+
+## Important Notes
+
+<Accordion title="Request Body Handling">
+The middleware adapter converts the parsed body back to a string because `verifyKeyMiddleware` needs the raw body to verify the signature. This is a quirk of how Next.js handles API routes differently from Express.
+</Accordion>
+
+<Accordion title="Error Handling">
+Always wrap your handler in try-catch blocks. If signature verification fails, the middleware will throw an error that should be caught and handled appropriately.
+</Accordion>
+
+<Accordion title="Performance">
+API routes are serverless functions that cold-start. For better performance:
+- Keep your handler function small and focused
+- Use edge runtime if available (`export const config = { runtime: 'edge' }`)
+- Consider caching frequently accessed data
+</Accordion>
+
+## Next Steps
+
+- Learn about [handling modals in Next.js](/examples/modals)
+- Explore [Express.js setup](/examples/express-app) for a traditional server approach
+- Deploy to [cloud functions](/examples/cloud-functions) for a serverless architecture

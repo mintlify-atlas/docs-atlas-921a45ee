@@ -1,0 +1,414 @@
+---
+title: 'Signature Verification'
+description: 'Secure your Discord webhooks with Ed25519 signature verification'
+---
+
+## Overview
+
+Discord signs all webhook requests using Ed25519 cryptographic signatures. Verifying these signatures ensures that requests to your endpoint actually come from Discord and haven't been tampered with.
+
+## Why Verify Signatures?
+
+<Warning>
+  Always verify request signatures to protect your application from:
+  - Unauthorized requests from malicious actors
+  - Replay attacks
+  - Man-in-the-middle tampering
+</Warning>
+
+Without signature verification, anyone could send fake requests to your webhook endpoint, potentially causing security issues or unexpected behavior.
+
+## Getting Your Public Key
+
+<Steps>
+  <Step title="Open Discord Developer Portal">
+    Navigate to [https://discord.com/developers/applications](https://discord.com/developers/applications)
+  </Step>
+
+  <Step title="Select your application">
+    Click on your application from the list
+  </Step>
+
+  <Step title="Copy public key">
+    Find your application's **Public Key** in the General Information section
+  </Step>
+
+  <Step title="Store securely">
+    Store the public key in your environment variables:
+    ```bash
+    export CLIENT_PUBLIC_KEY=your_public_key_here
+    ```
+  </Step>
+</Steps>
+
+## Verification Methods
+
+The library provides two methods for signature verification:
+
+### 1. Manual Verification with `verifyKey`
+
+For custom implementations or non-Express frameworks:
+
+```javascript
+import { verifyKey } from 'discord-interactions';
+
+async function handleRequest(req, res) {
+  const signature = req.get('X-Signature-Ed25519');
+  const timestamp = req.get('X-Signature-Timestamp');
+  const rawBody = req.rawBody; // Must be raw body, not parsed JSON
+  
+  const isValid = await verifyKey(
+    rawBody,
+    signature,
+    timestamp,
+    process.env.CLIENT_PUBLIC_KEY
+  );
+  
+  if (!isValid) {
+    return res.status(401).end('Bad request signature');
+  }
+  
+  // Process the request
+  const body = JSON.parse(rawBody.toString('utf-8'));
+  // ...
+}
+```
+
+### 2. Middleware for Express
+
+For Express and Express-compatible frameworks:
+
+<CodeGroup>
+
+```javascript Interactions
+import { verifyKeyMiddleware } from 'discord-interactions';
+
+app.post('/interactions',
+  verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+  (req, res) => {
+    // Signature already verified!
+    const interaction = req.body;
+    // Handle interaction
+  }
+);
+```
+
+```javascript Webhook Events
+import { verifyWebhookEventMiddleware } from 'discord-interactions';
+
+app.post('/events',
+  verifyWebhookEventMiddleware(process.env.CLIENT_PUBLIC_KEY),
+  (req, res) => {
+    // Signature already verified!
+    const event = req.body;
+    // Handle event
+  }
+);
+```
+
+</CodeGroup>
+
+## How Verification Works
+
+The verification process follows these steps:
+
+<Steps>
+  <Step title="Extract headers">
+    Discord sends two headers with each request:
+    - `X-Signature-Ed25519`: The signature
+    - `X-Signature-Timestamp`: The timestamp
+  </Step>
+
+  <Step title="Construct message">
+    Concatenate the timestamp and raw request body:
+    ```
+    message = timestamp + rawBody
+    ```
+  </Step>
+
+  <Step title="Verify signature">
+    Use Ed25519 to verify the signature against your public key:
+    ```javascript
+    const isValid = await crypto.subtle.verify(
+      { name: 'ed25519' },
+      publicKey,
+      signature,
+      message
+    );
+    ```
+  </Step>
+
+  <Step title="Accept or reject">
+    - If valid: Process the request
+    - If invalid: Return 401 Unauthorized
+  </Step>
+</Steps>
+
+## The `verifyKey` Function
+
+The `verifyKey` function signature:
+
+```typescript
+async function verifyKey(
+  rawBody: Uint8Array | ArrayBuffer | Buffer | string,
+  signature: string,
+  timestamp: string,
+  clientPublicKey: string | CryptoKey,
+): Promise<boolean>
+```
+
+### Parameters
+
+- **rawBody**: The raw request body (before parsing)
+- **signature**: Value from `X-Signature-Ed25519` header
+- **timestamp**: Value from `X-Signature-Timestamp` header
+- **clientPublicKey**: Your Discord public key (hex string or CryptoKey)
+
+### Return Value
+
+Returns `true` if the signature is valid, `false` otherwise.
+
+## Middleware Implementation
+
+### Interaction Middleware
+
+The `verifyKeyMiddleware` for interactions:
+
+1. Verifies the signature
+2. Automatically responds to PING interactions
+3. Parses the body and calls `next()` for valid requests
+
+```javascript
+import { verifyKeyMiddleware, InteractionType, InteractionResponseType } from 'discord-interactions';
+
+// Automatic PING handling
+app.post('/interactions',
+  verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+  (req, res) => {
+    // PING is handled automatically
+    // Only APPLICATION_COMMAND, MESSAGE_COMPONENT, etc. reach here
+    const interaction = req.body;
+    // ...
+  }
+);
+```
+
+### Webhook Event Middleware
+
+The `verifyWebhookEventMiddleware` for events:
+
+1. Verifies the signature
+2. Automatically responds with 204 to PING events
+3. Responds with 204 and calls `next()` for regular events
+
+```javascript
+import { verifyWebhookEventMiddleware, WebhookType } from 'discord-interactions';
+
+// Automatic response handling
+app.post('/events',
+  verifyWebhookEventMiddleware(process.env.CLIENT_PUBLIC_KEY),
+  (req, res) => {
+    // 204 response already sent
+    // Process event asynchronously
+    const event = req.body;
+    // ...
+  }
+);
+```
+
+## Raw Body Requirements
+
+<Warning>
+  Signature verification requires access to the **raw, unparsed** request body. Do not use body-parsing middleware on webhook routes.
+</Warning>
+
+### Common Mistakes
+
+❌ **Wrong**: Using body-parser
+
+```javascript
+// DON'T DO THIS
+app.use(express.json()); // Parses all routes
+
+app.post('/interactions', 
+  verifyKeyMiddleware(PUBLIC_KEY),
+  (req, res) => { /* ... */ }
+);
+```
+
+✅ **Correct**: Exclude webhook routes from body parsing
+
+```javascript
+// Apply body parser only to non-webhook routes
+app.use((req, res, next) => {
+  if (req.path === '/interactions' || req.path === '/events') {
+    return next(); // Skip body parsing
+  }
+  express.json()(req, res, next);
+});
+
+app.post('/interactions', 
+  verifyKeyMiddleware(PUBLIC_KEY),
+  (req, res) => { /* ... */ }
+);
+```
+
+✅ **Alternative**: Use body parsing on specific routes
+
+```javascript
+// Only parse specific routes
+app.post('/api/other-route', express.json(), (req, res) => {
+  // Body parsed here
+});
+
+app.post('/interactions', 
+  verifyKeyMiddleware(PUBLIC_KEY),
+  (req, res) => {
+    // Raw body handled by middleware
+  }
+);
+```
+
+## Body Parser Warning
+
+If the middleware detects that `req.body` has been tampered with, it will log a warning:
+
+```
+[discord-interactions]: req.body was tampered with, probably by some 
+other middleware. We recommend disabling middleware for interaction 
+routes so that req.body is a raw buffer.
+```
+
+The middleware will attempt to reconstruct the raw body, but this is risky because it depends on `JSON.stringify` matching Discord's JSON serialization exactly.
+
+## Advanced: Custom Verification
+
+For frameworks other than Express, implement custom verification:
+
+```javascript
+import { verifyKey } from 'discord-interactions';
+
+// Example for AWS Lambda
+export async function handler(event) {
+  const signature = event.headers['x-signature-ed25519'];
+  const timestamp = event.headers['x-signature-timestamp'];
+  const body = event.body;
+  
+  const isValid = await verifyKey(
+    body,
+    signature,
+    timestamp,
+    process.env.CLIENT_PUBLIC_KEY
+  );
+  
+  if (!isValid) {
+    return {
+      statusCode: 401,
+      body: 'Invalid signature',
+    };
+  }
+  
+  const interaction = JSON.parse(body);
+  
+  // Handle PING
+  if (interaction.type === 1) {
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 1 }),
+    };
+  }
+  
+  // Handle other interactions
+  // ...
+}
+```
+
+## Using CryptoKey for Performance
+
+For better performance, import the public key once and reuse it:
+
+```javascript
+import { verifyKey } from 'discord-interactions';
+import { subtle } from 'crypto';
+
+// Import key once at startup
+const publicKey = await subtle.importKey(
+  'raw',
+  Buffer.from(process.env.CLIENT_PUBLIC_KEY, 'hex'),
+  { name: 'ed25519', namedCurve: 'ed25519' },
+  false,
+  ['verify']
+);
+
+// Reuse the CryptoKey
+async function handleRequest(req, res) {
+  const isValid = await verifyKey(
+    req.rawBody,
+    req.get('X-Signature-Ed25519'),
+    req.get('X-Signature-Timestamp'),
+    publicKey // Pass CryptoKey instead of string
+  );
+  
+  if (!isValid) {
+    return res.status(401).end('Invalid signature');
+  }
+  
+  // Process request
+}
+```
+
+## Error Handling
+
+The `verifyKey` function catches all errors and returns `false`:
+
+```typescript
+try {
+  // Verification logic
+  return isValid;
+} catch (_ex) {
+  return false; // Any error results in failed verification
+}
+```
+
+This means invalid signatures, malformed keys, or any other errors will result in verification failure.
+
+## Best Practices
+
+<Note>
+  - Store your public key in environment variables, never in source code
+  - Always verify signatures in production
+  - Use the middleware for automatic handling
+  - Don't use body-parsing middleware on webhook routes
+  - Handle verification failures by returning 401
+</Note>
+
+## Testing
+
+For local development, you can temporarily skip verification (not recommended for production):
+
+```javascript
+const VERIFY_KEY = process.env.NODE_ENV === 'production' 
+  ? verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY)
+  : (req, res, next) => next(); // Skip in development
+
+app.post('/interactions', VERIFY_KEY, (req, res) => {
+  // Handle interaction
+});
+```
+
+<Warning>
+  Never skip signature verification in production. This is only for local testing with tools that can't generate valid signatures.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Express Integration" icon="server" href="/guides/express-integration">
+    Set up a complete Express server with verification
+  </Card>
+  
+  <Card title="Interactions" icon="bolt" href="/guides/interactions">
+    Learn how to handle different interaction types
+  </Card>
+</CardGroup>

@@ -1,0 +1,246 @@
+---
+title: "Express Application"
+description: "Build a Discord bot server using Express.js with interaction and event handling"
+---
+
+This example demonstrates how to create a complete Discord bot server using Express.js with the discord-interactions-js library. It includes both interaction handling and webhook event support.
+
+## What You'll Learn
+
+- Setting up an Express server for Discord interactions
+- Verifying interaction requests with middleware
+- Handling slash commands
+- Processing Discord webhook events
+- Setting up health check endpoints
+
+## Prerequisites
+
+<Note>
+Before you begin, make sure you have:
+- Node.js installed (v16 or higher)
+- A Discord application with a public key
+- Your application's public key stored in environment variables
+</Note>
+
+Install the required dependencies:
+
+```bash
+npm install express discord-interactions
+```
+
+## Complete Example
+
+<CodeGroup>
+
+```javascript Basic Setup
+const express = require('express');
+const util = require('node:util');
+const {
+	InteractionType,
+	InteractionResponseType,
+	verifyKeyMiddleware,
+	verifyWebhookEventMiddleware,
+} = require('discord-interactions');
+
+const app = express();
+
+app.post(
+	'/interactions',
+	verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+	(req, res) => {
+		const interaction = req.body;
+		if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+			res.send({
+				type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+				data: {
+					content: 'Hello world',
+				},
+			});
+		}
+	},
+);
+
+app.post(
+	'/events',
+	verifyWebhookEventMiddleware(process.env.CLIENT_PUBLIC_KEY),
+	(req, _res) => {
+		console.log('📨 Event Received!');
+		console.log(
+			util.inspect(req.body, { showHidden: false, colors: true, depth: null }),
+		);
+	},
+);
+
+// Simple health check, to also make it easy to check if the app is up and running
+app.get('/health', (_req, res) => {
+	res.send('ok');
+});
+
+app.listen(8999, () => {
+	console.log('Example app listening at http://localhost:8999');
+});
+```
+
+```javascript With Body Parser
+const express = require('express');
+const bodyParser = require('body-parser');
+
+const {
+	InteractionType,
+	InteractionResponseType,
+	verifyKeyMiddleware,
+} = require('discord-interactions');
+
+const app = express();
+
+app.post(
+	'/interactions',
+	verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+	(req, res) => {
+		const interaction = req.body;
+		if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+			res.send({
+				type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+				data: {
+					content: 'Hello world',
+				},
+			});
+		}
+	},
+);
+
+// It's best to set up body-parser so that it does NOT apply to interaction
+// routes.
+app.use(bodyParser.json());
+
+app.listen(8999, () => {
+	console.log('Example app listening at http://localhost:8999');
+});
+```
+
+</CodeGroup>
+
+## Key Features
+
+### Interaction Endpoint
+
+The `/interactions` endpoint handles all Discord slash commands and interactions:
+
+```javascript
+app.post(
+	'/interactions',
+	verifyKeyMiddleware(process.env.CLIENT_PUBLIC_KEY),
+	(req, res) => {
+		const interaction = req.body;
+		if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+			res.send({
+				type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+				data: {
+					content: 'Hello world',
+				},
+			});
+		}
+	},
+);
+```
+
+- Uses `verifyKeyMiddleware` to automatically verify Discord's request signature
+- Responds to application commands with a simple message
+- The middleware handles PING interactions automatically
+
+### Event Webhook Endpoint
+
+The `/events` endpoint receives Discord webhook events:
+
+```javascript
+app.post(
+	'/events',
+	verifyWebhookEventMiddleware(process.env.CLIENT_PUBLIC_KEY),
+	(req, _res) => {
+		console.log('📨 Event Received!');
+		console.log(
+			util.inspect(req.body, { showHidden: false, colors: true, depth: null }),
+		);
+	},
+);
+```
+
+- Uses `verifyWebhookEventMiddleware` to verify event authenticity
+- Logs all received events for debugging and monitoring
+
+### Health Check
+
+A simple health check endpoint for monitoring:
+
+```javascript
+app.get('/health', (_req, res) => {
+	res.send('ok');
+});
+```
+
+## Environment Setup
+
+Create a `.env` file in your project root:
+
+```bash
+CLIENT_PUBLIC_KEY=your_discord_application_public_key_here
+```
+
+<Warning>
+Never commit your `.env` file to version control. Add it to your `.gitignore` file.
+</Warning>
+
+## Running the Server
+
+Start your server:
+
+```bash
+node app.js
+```
+
+The server will start on `http://localhost:8999`.
+
+## Configure Discord
+
+In your Discord application settings:
+
+1. Set the **Interactions Endpoint URL** to: `https://your-domain.com/interactions`
+2. (Optional) Set the **Webhook URL** to: `https://your-domain.com/events`
+
+<Info>
+For local development, use a tool like [ngrok](https://ngrok.com/) to expose your local server:
+```bash
+ngrok http 8999
+```
+</Info>
+
+## Important Notes
+
+<Accordion title="Body Parser Considerations">
+If you're using `body-parser` or other middleware that parses request bodies, apply it **after** your interaction routes. The `verifyKeyMiddleware` needs access to the raw request body to verify the signature.
+
+**Recommended approach:**
+```javascript
+// Define interaction routes first
+app.post('/interactions', verifyKeyMiddleware(key), handler);
+
+// Then apply body-parser
+app.use(bodyParser.json());
+```
+</Accordion>
+
+<Accordion title="Security">
+The middleware automatically:
+- Verifies the `X-Signature-Ed25519` header
+- Validates the `X-Signature-Timestamp` header
+- Rejects invalid requests with a 401 status
+
+Always keep your `CLIENT_PUBLIC_KEY` secure and never expose it in client-side code.
+</Accordion>
+
+## Next Steps
+
+- Learn about [handling modals](/examples/modals)
+- Explore [message components](/examples/message-components)
+- Deploy to [Google Cloud Functions](/examples/cloud-functions)
+- Check out the [Next.js integration](/examples/nextjs)

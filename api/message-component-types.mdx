@@ -1,0 +1,103 @@
+---
+title: MessageComponentTypes
+description: Enum defining all available Discord message component types
+---
+
+## Overview
+
+The `MessageComponentTypes` enum defines the type identifiers for all Discord message components. Each component must specify its type using one of these values.
+
+## Enum Values
+
+```typescript
+enum MessageComponentTypes {
+  ACTION_ROW = 1,
+  BUTTON = 2,
+  STRING_SELECT = 3,
+  INPUT_TEXT = 4,
+  USER_SELECT = 5,
+  ROLE_SELECT = 6,
+  MENTIONABLE_SELECT = 7,
+  CHANNEL_SELECT = 8,
+  SECTION = 9,
+  TEXT_DISPLAY = 10,
+  THUMBNAIL = 11,
+  MEDIA_GALLERY = 12,
+  FILE = 13,
+  SEPARATOR = 14,
+  CONTAINER = 17,
+  LABEL = 18,
+}
+```
+
+## Component Types
+
+### ACTION_ROW (1)
+Container for other interactive components. Action rows are used to organize buttons and select menus.
+
+### BUTTON (2)
+Interactive button component that users can click.
+
+### STRING_SELECT (3)
+Dropdown menu for selecting from predefined text options.
+
+### INPUT_TEXT (4)
+Text input field for user-entered text (used in modals).
+
+### USER_SELECT (5)
+Dropdown menu for selecting Discord users.
+
+### ROLE_SELECT (6)
+Dropdown menu for selecting Discord roles.
+
+### MENTIONABLE_SELECT (7)
+Dropdown menu for selecting users or roles.
+
+### CHANNEL_SELECT (8)
+Dropdown menu for selecting Discord channels.
+
+### SECTION (9)
+Section component for grouping related content with an optional accessory.
+
+### TEXT_DISPLAY (10)
+Component for displaying text content.
+
+### THUMBNAIL (11)
+Component for displaying thumbnail images.
+
+### MEDIA_GALLERY (12)
+Component for displaying multiple media items in a gallery format.
+
+### FILE (13)
+Component for displaying file attachments.
+
+### SEPARATOR (14)
+Visual separator component for dividing content.
+
+### CONTAINER (17)
+Container component for grouping multiple components together.
+
+### LABEL (18)
+Label component for adding descriptive text to other components.
+
+## Usage Example
+
+```typescript
+import { MessageComponentTypes } from 'discord.js';
+
+const button = {
+  type: MessageComponentTypes.BUTTON,
+  style: ButtonStyleTypes.PRIMARY,
+  label: 'Click me',
+  custom_id: 'my_button',
+};
+
+const actionRow = {
+  type: MessageComponentTypes.ACTION_ROW,
+  components: [button],
+};
+```
+
+## Reference
+
+For more information, see the [Discord Components Reference](https://discord.com/developers/docs/components/reference#what-is-a-component).

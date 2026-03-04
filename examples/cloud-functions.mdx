@@ -1,0 +1,421 @@
+---
+title: "Google Cloud Functions"
+description: "Deploy Discord bot interactions to Google Cloud Functions for serverless operation"
+---
+
+This example demonstrates how to deploy a Discord bot interaction handler to Google Cloud Functions. This serverless approach is perfect for bots that don't need a persistent server.
+
+## What You'll Learn
+
+- Setting up Discord interactions in Google Cloud Functions
+- Manual signature verification with `verifyKey`
+- Handling raw request bodies in cloud functions
+- Working with serverless constraints
+- Deploying to Google Cloud Platform
+
+## Prerequisites
+
+<Note>
+Before you begin, make sure you have:
+- A Google Cloud Platform account
+- [Google Cloud SDK](https://cloud.google.com/sdk) installed
+- A Discord application with a public key
+- Node.js 16 or higher
+</Note>
+
+Install the required dependency:
+
+```bash
+npm install discord-interactions
+```
+
+## Complete Example
+
+```javascript index.js
+const {
+	InteractionResponseType,
+	InteractionType,
+	verifyKey,
+} = require('discord-interactions');
+
+const CLIENT_PUBLIC_KEY = process.env.CLIENT_PUBLIC_KEY;
+
+module.exports.myInteraction = async (req, res) => {
+	// Verify the request
+	const signature = req.get('X-Signature-Ed25519');
+	const timestamp = req.get('X-Signature-Timestamp');
+	const isValidRequest = await verifyKey(
+		req.rawBody,
+		signature,
+		timestamp,
+		CLIENT_PUBLIC_KEY,
+	);
+	if (!isValidRequest) {
+		return res.status(401).end('Bad request signature');
+	}
+
+	// Handle the payload
+	const interaction = req.body;
+	if (interaction && interaction.type === InteractionType.APPLICATION_COMMAND) {
+		res.send({
+			type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+			data: {
+				content: `You used: ${interaction.data.name}`,
+			},
+		});
+	} else {
+		res.send({
+			type: InteractionResponseType.PONG,
+		});
+	}
+};
+```
+
+## Key Concepts
+
+### Manual Signature Verification
+
+Unlike Express middleware, Cloud Functions require manual verification:
+
+```javascript
+const signature = req.get('X-Signature-Ed25519');
+const timestamp = req.get('X-Signature-Timestamp');
+const isValidRequest = await verifyKey(
+	req.rawBody,
+	signature,
+	timestamp,
+	CLIENT_PUBLIC_KEY,
+);
+```
+
+<Accordion title="Why manual verification?">
+Cloud Functions don't use Express-style middleware in the traditional sense. Instead of using `verifyKeyMiddleware`, we:
+1. Extract the signature headers manually using `req.get()`
+2. Access the raw request body via `req.rawBody`
+3. Call `verifyKey()` directly to verify the request
+4. Return a 401 status if verification fails
+
+This gives you more control over the verification process in a serverless environment.
+</Accordion>
+
+### Request Handling
+
+The function handles both PING and command interactions:
+
+```javascript
+const interaction = req.body;
+if (interaction && interaction.type === InteractionType.APPLICATION_COMMAND) {
+	res.send({
+		type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+		data: {
+			content: `You used: ${interaction.data.name}`,
+		},
+	});
+} else {
+	// Handle PING or other interaction types
+	res.send({
+		type: InteractionResponseType.PONG,
+	});
+}
+```
+
+## Project Structure
+
+Create the following files:
+
+```plaintext
+my-discord-bot/
+├── index.js              # Your function code
+├── package.json          # Dependencies
+└── .env.yaml            # Environment variables (for deployment)
+```
+
+### package.json
+
+```json
+{
+  "name": "discord-bot-function",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "discord-interactions": "^4.0.0"
+  },
+  "engines": {
+    "node": "18"
+  }
+}
+```
+
+### .env.yaml
+
+```yaml
+CLIENT_PUBLIC_KEY: "your_discord_application_public_key_here"
+```
+
+<Warning>
+Never commit `.env.yaml` to version control. Add it to your `.gitignore` file.
+</Warning>
+
+## Deployment
+
+### Using gcloud CLI
+
+Deploy your function to Google Cloud:
+
+```bash
+gcloud functions deploy myInteraction \
+  --runtime nodejs18 \
+  --trigger-http \
+  --allow-unauthenticated \
+  --env-vars-file .env.yaml \
+  --entry-point myInteraction
+```
+
+<Info>
+The `--allow-unauthenticated` flag is necessary because Discord needs to send HTTP requests to your function. Security is handled through signature verification.
+</Info>
+
+### Deployment Options
+
+<CodeGroup>
+
+```bash Basic Deployment
+gcloud functions deploy myInteraction \
+  --runtime nodejs18 \
+  --trigger-http \
+  --allow-unauthenticated \
+  --env-vars-file .env.yaml \
+  --entry-point myInteraction
+```
+
+```bash With Region
+gcloud functions deploy myInteraction \
+  --runtime nodejs18 \
+  --trigger-http \
+  --allow-unauthenticated \
+  --env-vars-file .env.yaml \
+  --entry-point myInteraction \
+  --region us-central1
+```
+
+```bash With Memory/Timeout
+gcloud functions deploy myInteraction \
+  --runtime nodejs18 \
+  --trigger-http \
+  --allow-unauthenticated \
+  --env-vars-file .env.yaml \
+  --entry-point myInteraction \
+  --memory 256MB \
+  --timeout 30s
+```
+
+</CodeGroup>
+
+### Get Your Function URL
+
+After deployment, get your function's URL:
+
+```bash
+gcloud functions describe myInteraction --format='value(httpsTrigger.url)'
+```
+
+This will output something like:
+```
+https://us-central1-your-project.cloudfunctions.net/myInteraction
+```
+
+## Configure Discord
+
+In your Discord application settings:
+
+1. Go to your application in the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Navigate to "General Information"
+3. Set the **Interactions Endpoint URL** to your Cloud Function URL
+4. Discord will send a test PING request to verify the endpoint
+
+<Note>
+Make sure your function is deployed and responding to requests before configuring Discord. The verification will fail if your function isn't accessible.
+</Note>
+
+## Advanced Example
+
+Here's an enhanced version with better error handling and logging:
+
+```javascript index.js
+const {
+	InteractionResponseType,
+	InteractionType,
+	verifyKey,
+} = require('discord-interactions');
+
+const CLIENT_PUBLIC_KEY = process.env.CLIENT_PUBLIC_KEY;
+
+module.exports.myInteraction = async (req, res) => {
+	try {
+		// Verify the request
+		const signature = req.get('X-Signature-Ed25519');
+		const timestamp = req.get('X-Signature-Timestamp');
+		
+		if (!signature || !timestamp) {
+			console.error('Missing signature headers');
+			return res.status(401).end('Missing signature headers');
+		}
+
+		const isValidRequest = await verifyKey(
+			req.rawBody,
+			signature,
+			timestamp,
+			CLIENT_PUBLIC_KEY,
+		);
+
+		if (!isValidRequest) {
+			console.error('Invalid request signature');
+			return res.status(401).end('Bad request signature');
+		}
+
+		// Handle the payload
+		const interaction = req.body;
+		
+		// Log interaction for debugging
+		console.log('Received interaction:', {
+			type: interaction.type,
+			id: interaction.id,
+			command: interaction.data?.name,
+		});
+
+		switch (interaction.type) {
+			case InteractionType.PING:
+				return res.send({
+					type: InteractionResponseType.PONG,
+				});
+
+			case InteractionType.APPLICATION_COMMAND:
+				return res.send({
+					type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+					data: {
+						content: `You used: ${interaction.data.name}`,
+					},
+				});
+
+			case InteractionType.MESSAGE_COMPONENT:
+				return res.send({
+					type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+					data: {
+						content: 'Button clicked!',
+					},
+				});
+
+			default:
+				console.warn('Unknown interaction type:', interaction.type);
+				return res.status(400).send('Unknown interaction type');
+		}
+	} catch (error) {
+		console.error('Error handling interaction:', error);
+		return res.status(500).send('Internal server error');
+	}
+};
+```
+
+## Monitoring and Logs
+
+View your function logs:
+
+```bash
+gcloud functions logs read myInteraction --limit 50
+```
+
+Or view logs in real-time:
+
+```bash
+gcloud functions logs read myInteraction --limit 10 --follow
+```
+
+## Cost Considerations
+
+Google Cloud Functions pricing is based on:
+- Number of invocations
+- Compute time
+- Memory allocated
+- Network egress
+
+<Info>
+The free tier includes:
+- 2 million invocations per month
+- 400,000 GB-seconds of compute time
+- 200,000 GHz-seconds of compute time
+- 5 GB of network egress
+
+Most small to medium Discord bots will stay within the free tier.
+</Info>
+
+## Serverless Best Practices
+
+<Accordion title="Response Time">
+Discord requires responses within 3 seconds. For long-running operations:
+
+```javascript
+// Send immediate acknowledgment
+res.send({
+  type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+});
+
+// Then use the interaction webhook to send the actual response
+// within 15 minutes
+```
+</Accordion>
+
+<Accordion title="Cold Starts">
+Cloud Functions can have cold start latency. To minimize this:
+- Keep your function code small
+- Minimize dependencies
+- Use minimum memory allocation (256MB is usually sufficient)
+- Consider using Cloud Run for persistent containers if cold starts are an issue
+</Accordion>
+
+<Accordion title="Environment Variables">
+Always use environment variables for sensitive data:
+- Set them during deployment with `--env-vars-file`
+- Or set them individually with `--set-env-vars KEY=value`
+- Update them without redeploying using `gcloud functions deploy --update-env-vars`
+</Accordion>
+
+## Updating Your Function
+
+To update your function after making changes:
+
+```bash
+gcloud functions deploy myInteraction \
+  --runtime nodejs18 \
+  --trigger-http \
+  --allow-unauthenticated \
+  --env-vars-file .env.yaml \
+  --entry-point myInteraction
+```
+
+## Troubleshooting
+
+<Accordion title="401 Bad request signature">
+- Verify your `CLIENT_PUBLIC_KEY` is correct
+- Check that you're using `req.rawBody` (not `req.body`) for verification
+- Ensure headers are being read correctly with `req.get()`
+</Accordion>
+
+<Accordion title="Function timeout">
+- Increase timeout with `--timeout` flag (max 540s for HTTP functions)
+- Use deferred responses for long operations
+- Consider moving to Cloud Run for longer timeouts
+</Accordion>
+
+<Accordion title="Discord endpoint verification fails">
+- Make sure your function is deployed and accessible
+- Test your function URL in a browser or with curl
+- Check function logs for errors
+- Verify your function responds to PING interactions
+</Accordion>
+
+## Next Steps
+
+- Learn about [Express.js setup](/examples/express-app) for local development
+- Explore [modal interactions](/examples/modals) for user input
+- Check out [Next.js API routes](/examples/nextjs) for another serverless option
+- Deploy to AWS Lambda or Azure Functions using similar patterns

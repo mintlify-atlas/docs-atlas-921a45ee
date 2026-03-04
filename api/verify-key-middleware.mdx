@@ -1,0 +1,128 @@
+---
+title: verifyKeyMiddleware
+description: Creates Express middleware for verifying Discord Interaction Webhooks
+---
+
+## Function Signature
+
+```typescript
+function verifyKeyMiddleware(
+  clientPublicKey: string,
+): (req: Request, res: Response, next: NextFunction) => void
+```
+
+## Description
+
+Creates a middleware function for use in Express-compatible web servers for verifying Interaction Webhooks from Discord. This middleware handles signature verification, automatic PING responses, and request body parsing.
+
+## Parameters
+
+<ParamField path="clientPublicKey" type="string" required>
+  The public key from the Discord developer dashboard. This is used to verify the Ed25519 signature of incoming interaction requests.
+</ParamField>
+
+## Returns
+
+<ResponseField name="middleware" type="(req: Request, res: Response, next: NextFunction) => void">
+  An Express middleware function that validates incoming Discord interaction requests.
+</ResponseField>
+
+## Behavior
+
+The middleware performs the following actions:
+
+1. **Signature Validation**: Extracts `X-Signature-Ed25519` and `X-Signature-Timestamp` headers and validates the request using the `verifyKey` function
+2. **Invalid Signature Handling**: Returns `401 Unauthorized` if the signature is missing or invalid
+3. **PING Auto-Response**: Automatically responds with `PONG` for Discord's PING interactions (used for initial endpoint verification)
+4. **Body Parsing**: Parses the JSON body and attaches it to `req.body` for valid interactions
+5. **Next Middleware**: Calls `next()` to pass control to your interaction handler for non-PING interactions
+
+## Usage Example
+
+### Basic Setup
+
+```typescript
+import express from 'express';
+import { verifyKeyMiddleware, InteractionType, InteractionResponseType } from 'discord-interactions';
+
+const app = express();
+
+app.post('/interactions', verifyKeyMiddleware(process.env.DISCORD_PUBLIC_KEY), (req, res) => {
+  const interaction = req.body;
+  
+  if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: 'Hello from Discord!',
+      },
+    });
+  }
+});
+
+app.listen(3000);
+```
+
+### With Command Handling
+
+```typescript
+import express from 'express';
+import { verifyKeyMiddleware, InteractionType, InteractionResponseType } from 'discord-interactions';
+
+const app = express();
+
+app.post('/interactions', verifyKeyMiddleware(process.env.DISCORD_PUBLIC_KEY), (req, res) => {
+  const { type, data } = req.body;
+  
+  // PING is already handled by the middleware
+  
+  if (type === InteractionType.APPLICATION_COMMAND) {
+    const { name } = data;
+    
+    switch (name) {
+      case 'hello':
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: 'Hello, World!',
+          },
+        });
+      
+      case 'ping':
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: 'Pong!',
+          },
+        });
+    }
+  }
+});
+
+app.listen(3000);
+```
+
+## Important Notes
+
+<Warning>
+  The middleware expects `req.body` to be a raw `Buffer`. Disable body parsing middleware (like `express.json()`) for your interaction endpoint to ensure proper signature verification.
+</Warning>
+
+<Note>
+  If `req.body` has been modified by other middleware, the function will attempt to reconstruct the raw buffer, but this is risky and may fail. The middleware will log a warning in this case.
+</Note>
+
+## Error Handling
+
+The middleware will return a `401 Unauthorized` response with the message `[discord-interactions] Invalid signature` in the following cases:
+
+- Missing `X-Signature-Ed25519` or `X-Signature-Timestamp` headers
+- Invalid signature that fails verification
+- Malformed request data
+
+## See Also
+
+- [verifyKey](/api/verify-key) - Low-level signature verification function
+- [verifyWebhookEventMiddleware](/api/verify-webhook-event-middleware) - Middleware for webhook events
+- [InteractionType](/api/interaction-type) - Enum of interaction types
+- [InteractionResponseType](/api/interaction-response-type) - Enum of response types
